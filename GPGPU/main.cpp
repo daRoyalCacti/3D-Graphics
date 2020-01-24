@@ -32,12 +32,14 @@ int main() {
   openCl.square(data2, results2, size_data2);
   openCl.cleanup();
 
+  #pragma omp parallel for
   for (uint32_t i = 0; i < size_data; i++) {
     if (fabs(results[i] - data[i] * data[i]) > 0.01) {
       std::cout << "error for group 1 at i = " << i << std::endl;
     }
   }
 
+  #pragma omp parallel for
   for (uint32_t i = 0; i < size_data2; i++) {
     if (fabs(results2[i] - data2[i] * data2[i]) > 0.01) {
       std::cout << "error for group 2 at i = " << i << std::endl;
