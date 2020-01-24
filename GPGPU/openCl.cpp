@@ -8,17 +8,14 @@
 
 #define timing
 
-static const uint32_t size_data = 1e8;
 
-float data[size_data];
-float results[size_data];
 
-void openCl_instance::fill_data() {
+/*void openCl_instance::fill_data() {
   #pragma omp parallel for
   for (uint32_t i = 0; i < size_data; i++) { //to be made more concrete later
     data[i] = i/100;
   }
-}
+}*/
 
 void openCl_instance::query_platform() {
   //query for 1 openCl platform
@@ -146,7 +143,7 @@ void openCl_instance::create_command_queue() {
   }
 }
 
-void openCl_instance::create_program_object() {
+void openCl_instance::create_program_object_square() {
   //creating the program object
   //a program is a collection of kernel functions -- kernel functions are what execute on device
   //===============================================================================================================================================================================================================
@@ -257,7 +254,7 @@ void openCl_instance::create_program_object() {
 
 }
 
-void openCl_instance::build_program() {
+void openCl_instance::build_program_square() {
   //Building program executables
   //compiling and linking the program object
   //===============================================================================================================================================================================================================
@@ -327,7 +324,7 @@ void openCl_instance::build_program() {
 
 }
 
-void openCl_instance::create_kernel_objects() {
+void openCl_instance::create_kernel_objects_square() {
   //creating kernel objects
   //kernel objects are an encapsulation of a __kernel function
   //===============================================================================================================================================================================================================
@@ -360,13 +357,13 @@ void openCl_instance::create_kernel_objects() {
 
 }
 
-void openCl_instance::create_buffers() {
+void openCl_instance::create_buffers_square(const uint32_t size) {
   //Creating Buffers
   //===============================================================================================================================================================================================================
   input_data = clCreateBuffer(
     context,
     CL_MEM_READ_ONLY, //bit field used to specify the usage of memory -- possibilities are CL_MEM_READ_WRITE, CL_MEM_WRITE_ONLY, CL_MEM_READ_ONLY, CL_MEM_USE_HOST_PTR, CL_MEM_ALLOC_HOST_PTR, CL_MEM_COPY_HOST_PTR
-    sizeof(float) * size_data,  //size in bytes of teh buffer to allocate
+    sizeof(float) * size,  //size in bytes of teh buffer to allocate
     NULL, //pointer to buffer data
     &err
   );
@@ -393,7 +390,7 @@ void openCl_instance::create_buffers() {
   output_data = clCreateBuffer(
     context,
     CL_MEM_WRITE_ONLY, //bit field used to specify the usage of memory -- possibilities are CL_MEM_READ_WRITE, CL_MEM_WRITE_ONLY, CL_MEM_READ_ONLY, CL_MEM_USE_HOST_PTR, CL_MEM_ALLOC_HOST_PTR, CL_MEM_COPY_HOST_PTR
-    sizeof(float) * size_data, //size in bytes of teh buffer to allocate
+    sizeof(float) * size, //size in bytes of teh buffer to allocate
     NULL, //pointer to buffer data
     &err
   );
@@ -418,7 +415,7 @@ void openCl_instance::create_buffers() {
   }
 }
 
-void openCl_instance::write_to_buffers() {
+void openCl_instance::write_to_buffers_square(float* input, const uint32_t size) {
   //Writing data to Buffers
   //===============================================================================================================================================================================================================
   err = clEnqueueWriteBuffer(
@@ -426,8 +423,8 @@ void openCl_instance::write_to_buffers() {
     input_data, //memory buffer object to write to
     CL_TRUE, //true for blocking write -- not returned immediately
     0, //offset in the buffer object to write to
-    sizeof(float) * size_data, //size in bytes of data to write
-    data, // pointer to buffer in host memory to read data from
+    sizeof(float) * size, //size in bytes of data to write
+    input, // pointer to buffer in host memory to read data from
     0, //number of events in events list
     NULL, //events list that need to be complete before this will execute
     NULL //event object to return on completetion
@@ -455,7 +452,7 @@ void openCl_instance::write_to_buffers() {
   }
 }
 
-void openCl_instance::set_kernel_arguments() {
+void openCl_instance::set_kernel_arguments_square() {
   //setting kernel arguments
   //the arguments set in the __kernel function
   //===============================================================================================================================================================================================================
@@ -515,12 +512,12 @@ void openCl_instance::set_kernel_arguments() {
 
 }
 
-void openCl_instance::enqueue_kernel() {
+void openCl_instance::enqueue_kernel_square(const uint32_t size) {
   //Program execution
   //===============================================================================================================================================================================================================
   //===============================================================================================================================================================================================================
   //Execute the kernel over the entire range of teh 1d input data set
-  size_t global = size_data;
+  size_t global = size;
   err = clEnqueueNDRangeKernel(
     command_queue,
     kernel,
@@ -568,7 +565,7 @@ void openCl_instance::enqueue_kernel() {
 
 }
 
-void openCl_instance::read_from_buffers() {
+void openCl_instance::read_from_buffers_square(float* output, const uint32_t size) {
   //reading data back
   //===============================================================================================================================================================================================================
 
@@ -588,8 +585,8 @@ void openCl_instance::read_from_buffers() {
     output_data, //memory buffer to read from
     CL_TRUE, //true for blocking write -- not returned immediately
     0, //offset in teh buffer object to read from
-    sizeof(float) * size_data, //size in bytes of data being read
-    results, //pointer to buffer in host memory to store data
+    sizeof(float) * size, //size in bytes of data being read
+    output, //pointer to buffer in host memory to store data
     0, //number of events
     NULL, //list of events that need to be completed first
     NULL //event object to return on completion
@@ -629,7 +626,7 @@ void openCl_instance::cleanup() {
 
 }
 
-int openCl_instance::run() {
+/*void openCl_instance::run() {
   #ifdef timing
   	auto start = std::chrono::high_resolution_clock::now();
   #endif
@@ -726,5 +723,98 @@ int openCl_instance::run() {
   	std::cout << "Cleanup took \t\t\t\t" << std::chrono::duration <double, std::milli>(end14 - start14).count() << "ms" << std::endl;
   #endif
 
-  return EXIT_SUCCESS;
+}*/
+
+void openCl_instance::init() {
+  #ifdef timing
+  	auto start = std::chrono::high_resolution_clock::now();
+  #endif
+  //fill_data();
+  #ifdef timing
+  	//auto end0 = std::chrono::high_resolution_clock::now();
+  	//std::cout << "Data filing took \t\t\t" << std::chrono::duration <double, std::milli>(end0 - start).count() << "ms" << std::endl;
+  	auto start1 = std::chrono::high_resolution_clock::now();
+  #endif
+  query_platform();
+  #ifdef timing
+  	auto end1 = std::chrono::high_resolution_clock::now();
+  	std::cout << "Platform querying took \t\t\t" << std::chrono::duration <double, std::milli>(end1 - start1).count() << "ms" << std::endl;
+  	auto start2 = std::chrono::high_resolution_clock::now();
+  #endif
+  query_device();
+  #ifdef timing
+  	auto end2 = std::chrono::high_resolution_clock::now();
+  	std::cout << "Device querying took \t\t\t" << std::chrono::duration <double, std::milli>(end2 - start2).count() << "ms" << std::endl;
+  	auto start3 = std::chrono::high_resolution_clock::now();
+  #endif
+  create_context();
+  #ifdef timing
+  	auto end3 = std::chrono::high_resolution_clock::now();
+  	std::cout << "Context creation took \t\t\t" << std::chrono::duration <double, std::milli>(end3 - start3).count() << "ms" << std::endl;
+  	auto start4 = std::chrono::high_resolution_clock::now();
+  #endif
+  create_command_queue();
+  #ifdef timing
+  	auto end4 = std::chrono::high_resolution_clock::now();
+  	std::cout << "Command queue creation took \t\t" << std::chrono::duration <double, std::milli>(end4 - start4).count() << "ms" << std::endl;
+  #endif
+}
+
+void openCl_instance::square(float* input, float* output, const uint32_t size) {
+  #ifdef timing
+    auto start5 = std::chrono::high_resolution_clock::now();
+  #endif
+  create_program_object_square();
+  #ifdef timing
+    auto end5 = std::chrono::high_resolution_clock::now();
+    std::cout << "Program creation took \t\t\t" << std::chrono::duration <double, std::milli>(end5 - start5).count() << "ms" << std::endl;
+    auto start6 = std::chrono::high_resolution_clock::now();
+  #endif
+  build_program_square();
+  #ifdef timing
+    auto end6 = std::chrono::high_resolution_clock::now();
+    std::cout << "Program building took \t\t\t" << std::chrono::duration <double, std::milli>(end6 - start6).count() << "ms" << std::endl;
+    auto start7 = std::chrono::high_resolution_clock::now();
+  #endif
+  create_kernel_objects_square();
+  #ifdef timing
+    auto end7 = std::chrono::high_resolution_clock::now();
+    std::cout << "Kernel creation took \t\t\t" << std::chrono::duration <double, std::milli>(end7 - start7).count() << "ms" << std::endl;
+    auto start8 = std::chrono::high_resolution_clock::now();
+  #endif
+  create_buffers_square(size);
+  #ifdef timing
+    auto end8 = std::chrono::high_resolution_clock::now();
+    std::cout << "Buffer creation took \t\t\t" << std::chrono::duration <double, std::milli>(end8 - start8).count() << "ms" << std::endl;
+    auto start9 = std::chrono::high_resolution_clock::now();
+  #endif
+  write_to_buffers_square(input, size);
+  #ifdef timing
+    auto end9 = std::chrono::high_resolution_clock::now();
+    std::cout << "Buffer writing took \t\t\t" << std::chrono::duration <double, std::milli>(end9 - start9).count() << "ms" << std::endl;
+    auto start10 = std::chrono::high_resolution_clock::now();
+  #endif
+  set_kernel_arguments_square();
+  #ifdef timing
+    auto end10 = std::chrono::high_resolution_clock::now();
+    std::cout << "Kernel argument setting took \t\t" << std::chrono::duration <double, std::milli>(end10 - start10).count() << "ms" << std::endl;
+    auto start11 = std::chrono::high_resolution_clock::now();
+  #endif
+  enqueue_kernel_square(size);
+  #ifdef timing
+    auto end11 = std::chrono::high_resolution_clock::now();
+    std::cout << "Kernel enqueueing took \t\t\t" << std::chrono::duration <double, std::milli>(end11 - start11).count() << "ms" << std::endl;
+    auto start12 = std::chrono::high_resolution_clock::now();
+  #endif
+  err = clFinish(command_queue); //wait for commands to be serviced before reading results
+  #ifdef timing
+    auto end12 = std::chrono::high_resolution_clock::now();
+    std::cout << "Time waiting \t\t\t\t" << std::chrono::duration <double, std::milli>(end12 - start12).count() << "ms" << std::endl;
+    auto start13 = std::chrono::high_resolution_clock::now();
+  #endif
+  read_from_buffers_square(output, size);
+  #ifdef timing
+    auto end13 = std::chrono::high_resolution_clock::now();
+    std::cout << "Buffer reading took \t\t\t" << std::chrono::duration <double, std::milli>(end13 - start13).count() << "ms" << std::endl;
+  #endif
 }

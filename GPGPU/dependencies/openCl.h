@@ -34,7 +34,7 @@ public:
   cl_kernel kernel;
 
 
-  void fill_data();
+  //void fill_data();
 
   void query_platform();
 
@@ -44,23 +44,27 @@ public:
 
   void create_command_queue();
 
-  void create_program_object();
+  void create_program_object_square();
 
-  void build_program();
+  void build_program_square();
 
-  void create_kernel_objects();
+  void create_kernel_objects_square();
 
-  void create_buffers();
+  void create_buffers_square(const uint32_t size);
 
-  void write_to_buffers();
+  void write_to_buffers_square(float* input, const uint32_t size);
 
-  void set_kernel_arguments();
+  void set_kernel_arguments_square();
 
-  void enqueue_kernel();
+  void enqueue_kernel_square(const uint32_t size);
 
-  void read_from_buffers();
+  void read_from_buffers_square(float* output, const uint32_t size);
 
   void cleanup();
 
-  int run();
+  //void run();
+
+  void init();
+
+  void square(float* input, float* output, const uint32_t size);
 };
