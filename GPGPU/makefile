@@ -1,11 +1,11 @@
 CC = g++
 
 IDIR = dependencies
-_DEPS = openCl.h
+_DEPS = openCl_instance.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 ODIR = compiler_objects
-_OBJ = main.o openCl.o
+_OBJ = main.o openCl_instance.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 

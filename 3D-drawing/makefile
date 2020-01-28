@@ -1,11 +1,11 @@
 CC = g++
 
 IDIR = dependencies
-_DEPS = global.h data.h vulkan_help.h basicApp.h static_simple_mesh.h vertex.h ubos.h staging_buffer.h window_inputs.h player_camera.h Buffer.h decriptorSetLayout.h graphicsPipeline.h Pixels.h Texture.h moving_simple_mesh.h
+_DEPS = global.h data.h vulkan_help.h vulkan_instance.h static_simple_mesh.h vertex.h ubos.h staging_buffer.h window_inputs.h player_camera.h Buffer.h decriptorSetLayout.h graphicsPipeline.h Pixels.h Texture.h moving_simple_mesh.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 ODIR = compiler_objects
-_OBJ = vulkan_help.o data.o basicApp.o main.o static_simple_mesh.o ubos.o staging_buffer.o window_inputs.o
+_OBJ = vulkan_help.o data.o vulkan_instance.o main.o static_simple_mesh.o ubos.o staging_buffer.o window_inputs.o
 OBJ_DEBUG = $(patsubst %,$(ODIR)/DEBUG/%,$(_OBJ))
 OBJ_RELEASE = $(patsubst %,$(ODIR)/RELEASE/%,$(_OBJ))
 
@@ -13,11 +13,12 @@ VULKAN_SDK_PATH = /home/george/Documents/Projects/Libraries/Vulkan-1.1.130.0/x86
 STB_INCLUDE_PATH  = /home/george/Documents/Projects/Libraries/stb-master
 GLFW_INCLUDE_PATH = /usr/include/GLFW/
 GLM_PATH = /usr/include/glm/
+TINYOBJ_INCLUDE_PATH = /home/george/Documents/Projects/Libraries
 
 DEBUG_OPTIONS = -g
 RELEASE_OPTIONS = -Ofast -D NODEBUG
 
-CFLAGS = -std=c++17 -I$(VULKAN_SDK_PATH)/include -I$(STB_INCLUDE_PATH) -I$(IDIR) -I$(GLFW_INCLUDE_PATH) -I$(GLM_PATH) -fopenmp
+CFLAGS = -std=c++17 -I$(VULKAN_SDK_PATH)/include -I$(STB_INCLUDE_PATH) -I$(IDIR) -I$(GLFW_INCLUDE_PATH) -I$(GLM_PATH) -I$(TINYOBJ_INCLUDE_PATH) -fopenmp -pthread
 LDFLAGS = -L$(VULKAN_SDK_PATH)/lib `pkg-config --static --libs glfw3` -lvulkan
 WFLAGS =  -Wall -Wextra -Wfloat-equal -Wundef -Wcast-align -Wwrite-strings -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow -Woverloaded-virtual
 

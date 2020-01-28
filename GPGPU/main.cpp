@@ -1,4 +1,4 @@
-#include "openCl.h"
+#include "openCl_instance.h"
 #include <chrono>
 #include <iostream>
 #include <cmath>

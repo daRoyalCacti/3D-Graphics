@@ -1,4 +1,4 @@
-__kernel void hello(__global float *input, __global float *output)
+__kernel void square(__global float *input, __global float *output)
 {
   size_t id = get_global_id(0);
   output[id] = input[id] * input[id];

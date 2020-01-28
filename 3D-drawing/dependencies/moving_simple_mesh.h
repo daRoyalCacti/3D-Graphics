@@ -34,8 +34,7 @@ struct moving_simple_mesh {
      if (modulous) {
        frameCounter %= (frames); // this is what will force the animation to repeat once it has finished
      } else {
-       frameCounter = frames - 1; // once the animation is complete, only show the last frame
-                                  // "-1" becasue it is used as an array index and arrays start from 0
+       return; //no need to update the mesh because its last frame has been drawn
      }
    }
    Mesh.updateVertexBuffer(device, Meshes[frameCounter], commandPool, graphicsQueue);

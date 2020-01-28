@@ -1,4 +1,4 @@
-#include "openCl.h"
+#include "openCl_instance.h"
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -331,7 +331,7 @@ void openCl_instance::create_kernel_objects_square() {
 
   kernel = clCreateKernel(
     program,
-    "hello", //the name of kernel
+    "square", //the name of kernel
     &err
   );
 

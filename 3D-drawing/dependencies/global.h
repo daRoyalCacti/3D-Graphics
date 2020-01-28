@@ -14,6 +14,8 @@
 	#ifdef timing
 		#define detailed_timing
 	#endif
+
+	#define gore_detail
 	//#define framerate
 #endif
 
