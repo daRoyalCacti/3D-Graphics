@@ -2,12 +2,6 @@
 #include "global.h"
 #include <unordered_map>
 
-//#define testing_obj
-
-#ifdef testing_obj
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
-#endif
 
 
 #include <string>
@@ -48,10 +42,6 @@ namespace vk_files {
     } //end function
   #endif
 
-  #ifdef testing_obj
-  std::vector<Vertex> vertices;
-  std::vector<uint32_t> indices;
-  #endif
 
   int read_Simple_Static_mesh() {
     //this functions reads the static meshes from files using a very set naming convention
@@ -216,48 +206,6 @@ namespace vk_files {
     delete [] no_mesh_indices;
     delete [] alldata;
 
-    #ifdef testing_obj
-      const char* MODEL_PATH = "./Meshes/chalet.obj";
-
-
-      tinyobj::attrib_t attrib;
-      std::vector<tinyobj::shape_t> shapes;
-      std::vector<tinyobj::material_t> materials;
-      std::string warn, err;
-
-      if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH)) {
-          throw std::runtime_error(warn + err);
-      }
-
-      no_m_mesh++;
-
-      std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
-
-      for (const auto& shape : shapes) {
-        for (const auto& index : shape.mesh.indices) {
-            Vertex vertex = {};
-
-            vertex.pos = {
-              attrib.vertices[3 * index.vertex_index + 0],
-              attrib.vertices[3 * index.vertex_index + 1],
-              attrib.vertices[3 * index.vertex_index + 2]
-            };
-
-            vertex.texCoord = {
-              attrib.texcoords[2 * index.texcoord_index + 0],
-              1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-            };
-
-            if (uniqueVertices.count(vertex) == 0) {
-              uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-              vertices.push_back(vertex);
-            }
-
-            indices.push_back(uniqueVertices[vertex]);
-        }
-    }
-
-    #endif
 
     return no_m_mesh;
   }
@@ -265,11 +213,7 @@ namespace vk_files {
 
 
   void Vertices_to_Simple_Moving_Mesh(moving_simple_mesh* Squares) {
-    for (int i = 0; i < static_cast<int>(no_m_mesh
-      #ifdef testing_obj
-      - 1
-      #endif
-      ); i++) { //for all moving meshes
+    for (int i = 0; i < static_cast<int>(no_m_mesh); i++) { //for all moving meshes
       Squares[i].Mesh.indices = m_Indicies[i];
       Squares[i].frames = frames_for_mesh[i];
       Squares[i].Meshes.resize(static_cast<int>(Squares[i].frames));
@@ -277,13 +221,6 @@ namespace vk_files {
         Squares[i].Meshes[j] = m_Vertices[i][j];
       }
     }
-
-    #ifdef testing_obj
-    Squares[no_m_mesh - 1].frames = 1;
-    Squares[no_m_mesh - 1].Meshes.resize(1);
-    Squares[no_m_mesh - 1].Meshes[0] = vertices;
-    Squares[no_m_mesh - 1].Mesh.indices = indices;
-    #endif
 
     delete [] frames_for_mesh;
     //std::vector<std::vector<uint32_t>>().swap(m_Indicies);
@@ -300,11 +237,7 @@ namespace vk_files {
 
   void Texture_to_Pixels(pixels* imagePixels){
     #pragma omp parallel for
-      for (int i = 0; i < static_cast<int>(no_image
-        #ifdef testing_obj
-         - 1
-         #endif
-       ); i++) {
+      for (int i = 0; i < static_cast<int>(no_image); i++) {
         try {
           imagePixels[i].read_file("textures/texture_" + std::to_string(i) + ".png"); //the pixel class has a built in way to read files
         }
@@ -312,9 +245,6 @@ namespace vk_files {
           throw std::runtime_error("failed to read texture file " + std::to_string(i));
         }
       }
-      #ifdef testing_obj
-      imagePixels[no_image - 1].read_file("textures/chalet.jpg");
-      #endif
   }
 
 
@@ -329,16 +259,8 @@ namespace vk_files {
     unsigned *alldata = new unsigned[test_reading_data_first * 3 + 1];
 
     const unsigned no_ubo_mesh = test_reading_data_first;
-    if (no_ubo_mesh != (no_mesh + no_m_mesh
-      #ifdef testing_obj
-       - 1
-       #endif
-     )) throw std::runtime_error("number of ubo model matrices does not equal the number of meshes");
-    rotations.resize(no_mesh + no_m_mesh
-      #ifdef testing_obj
-       - 1
-       #endif
-     );
+    if (no_ubo_mesh != (no_mesh + no_m_mesh)) throw std::runtime_error("number of ubo model matrices does not equal the number of meshes");
+    rotations.resize(no_mesh + no_m_mesh);
 
     std::ifstream data_file("./Meshes/ubo_data", std::ios::binary); data_file.read((char*)&alldata[0], (test_reading_data_first * 3 + 1) * sizeof(unsigned) ); data_file.close();
     unsigned* testptr = &alldata[1];
@@ -408,11 +330,7 @@ namespace vk_files {
 
 
   void Rotations_to_UBOs(ubo_model* square_model) {
-    for (unsigned i = 0; i < no_mesh + no_m_mesh
-      #ifdef testing_obj
-       - 1
-       #endif
-       ; i++) { //for each mesh
+    for (unsigned i = 0; i < no_mesh + no_m_mesh; i++) { //for each mesh
       //std::cout << i << " " << no_mesh + no_m_mesh << std::endl;
       square_model[i].models.resize(no_frames[i]);
       square_model[i].total_frames = no_frames[i];
@@ -424,11 +342,6 @@ namespace vk_files {
     } //end outer loop
     delete [] no_frames;
     //std::vector<std::vector<glm::mat4>>().swap(rotations);
-    #ifdef testing_obj
-    square_model[no_mesh + no_m_mesh - 1].models.resize(1);
-    square_model[no_mesh + no_m_mesh - 1].total_frames = 1;
-    square_model[no_mesh + no_m_mesh - 1].models[0] = glm::mat4(1.0f);
-    #endif
   }
 
 } //end namespace
