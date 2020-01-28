@@ -4,17 +4,23 @@
 #include <vector>
 
 inline double charToNum(char value) {
+	//uses a standard algorithm to convert from char to a number
 	return (double)value - (double)'0';
 }
 
 template <typename T>
 inline bool isNum(T value) {
+	//this is used to evaluate if the value returned by 'charToNum' did infact return a number
+	//this is done by checking if the value return is between 0 and 9 inclusive
+	// - 'charToNum' only takes one char at a time so it is impossible for it to correctly return a 2 digit number
 	if (value < 0) return false;
 	if (value >= 10) return false;
 	return true;
 }
 
 double evaluate(double one, double two, char operation) {
+	//performs simple operations on 2 numbers
+	// - there is likely a simpler way of doing this but this is the best way I could come up with
 	if (operation == '+') {
 		return one + two;
 	} else if (operation == '-') {
@@ -28,9 +34,8 @@ double evaluate(double one, double two, char operation) {
 		} else {
 			return one / two;
 		}
-	} else if (operation == '^') {	//wont give expected behaviour
-		return pow(one,two);
 	} else {
+		//this is mainly useful for debugging
 		std::cerr << operation << " is not a valid operation" << std::endl;
 		exit(1);
 	}
@@ -39,12 +44,10 @@ double evaluate(double one, double two, char operation) {
 
 double evaluate_expression(std::vector<double> nums, std::vector<char> ops) {
 	double answer;
-	for (const auto& op : ops) {
-		std::cout << op;
-	}
-	std::printf("\n");
+
 
 	//iterate through and find all bracketed expressions to be evaluated first
+	//e.g. ((..) * (..(..)..)) -> (x * y)
 	int net_right = 0;
 	unsigned counter_nums = 0;
 	std::vector<double> new_nums;
@@ -62,7 +65,7 @@ double evaluate_expression(std::vector<double> nums, std::vector<char> ops) {
 				} else if (ops[i] == ')') {
 					net_right--;
 					if (net_right == 0) {
-						break;
+						break;	//don't want the last bracket being added
 					}
 				} else if (ops[i] == 'x') {
 					exp_nums.push_back(nums[counter_nums++]);
@@ -72,7 +75,6 @@ double evaluate_expression(std::vector<double> nums, std::vector<char> ops) {
 				i++;
 			}
 
-			//exp_ops.erase(exp_ops.end() - 1);
 			double exp_ans = evaluate_expression(exp_nums, exp_ops);
 			new_nums.push_back(exp_ans);
 
@@ -92,7 +94,7 @@ double evaluate_expression(std::vector<double> nums, std::vector<char> ops) {
 
 	}	//end loop
 	//using the answers to the bracketed expressions, evaluate the answer to the expression given
-	answer = new_nums[0];
+	answer = new_nums[0];	//setting this so the recursion below will work correctly
 
 	for (int i = 0; i < new_ops.size(); i++) {
 		answer = evaluate(answer, new_nums[i + 1], new_ops[i]);

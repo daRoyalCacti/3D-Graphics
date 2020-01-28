@@ -16,6 +16,11 @@ int main() {
 	int counter = 0;
 	unsigned times_here = 0;
 
+	std::cout << "input:\t";
+	for (int i = 0; i < sizeof(input)/sizeof(char); i++) {
+		std::cout << input[i];
+	}
+	std::cout << std::endl;
 
 	for (int i = 0; i < sizeof(input)/sizeof(char) - 1; i++) {
 		if (isNum(charToNum(input[i]))) {
@@ -77,98 +82,101 @@ int main() {
 	}
 
 
+	//bracketing multiplication and division to comply with BOMDAS/PEMDAS
+	//this is done by breaking the input up into multiple cases an exectuting an algorithm on each
+	//it is entirely possible to do the algorithm without uses cases, except this is an unnecessary complication
 
-
-	for (const auto& num : nums) {
-		std::cout << num << std::endl;
-	}
-	std::printf("\n");
-
-	for (const auto& operation : operations) {
-		std::cout << operation;
-	}
-	std::printf("\n\n");
-
-
-	//need to add check if if something is already bracketed
-	std::vector<char> f_operations(operations.begin(), operations.end());
-	counter = 0;
-	for (int i = 0; i < f_operations.size(); i++) {
-		//std::cout << i << std::endl;
-		if (f_operations[counter] == '*' || f_operations[counter] == '/') {
-			if (f_operations[counter + 1] == 'x') { //if the next operation involves a number
-				if (f_operations[counter - 1] == 'x') {
+	counter = 0;	//counter here represents how many items were added before the current search position
+								//this is used because inserting elements is done from the beginning of the vector and thus the current search position will have to increase along with the position items are being inserted at
+								//this cannot be made simpler by adding elements based on the end of the vector because then the amount of elements added beyond the current search position will have to be kept track of
+								// - this will require a very similar to the current one employed
+								//since there will always be a bracket added to the left and right of the current search position, counter will be incremented by 1 everytime a bracket is added
+	for (int i = 0; i < operations.size(); i++, counter++) {
+		if (operations[counter] == '*' || operations[counter] == '/') {
+			if (operations[counter + 1] == 'x') { //if the next operation involves a number
+				if (operations[counter - 1] == 'x') {
+					//the trivial case
 					//x * x = (x * x)
-					f_operations.insert(f_operations.begin() + counter + 2, ')');	//the position after the x
-					f_operations.insert(f_operations.begin() + counter - 1, '('); //the position before the x
+					operations.insert(operations.begin() + counter + 2, ')');	//the position after the x
+					operations.insert(operations.begin() + counter - 1, '('); //the position before the x
 					counter+=1;
 				} //endif 'x'
 
-				if (f_operations[counter - 1] == ')') {
+				if (operations[counter - 1] == ')') {
 					//() * x = (() * x)
-					f_operations.insert(f_operations.begin() + counter + 2, ')'); //the position after the x
+
+					//adding the trivial right bracket
+					operations.insert(operations.begin() + counter + 2, ')'); //the position after the x
 					int counter2 = counter - 1; //starting at what is already checked because it is decremented in the main loop
-					int net_left = 1;
-					while (net_left != 0) {
-						if (f_operations[--counter2] == ')') {
-							net_left++;
-						} else if (f_operations[counter2] == '(') {
-							net_left--;
+
+					//keep on moving left until the bracket ends
+					//this is made more complicated because there could be more brackets inside the brackets under consideration
+					//to get around this, the number of left and right brackets are kept track of to add a bracket in the corret position
+
+					int net_left = 1;	//keeping track of the number of net number of left brackets
+					while (net_left != 0) {		//if there is the same amount of right brackets as left brackets, then we have found the position were a bracket needs to be aded
+						if (operations[--counter2] == ')') {
+							net_left++;			//a set of brackets inside of the main brackets has been found
+						} else if (operations[counter2] == '(') {
+							net_left--;			//the inner set of brackets has ended -- or the main set has ended and thus we are done
 						}
 					}
-					f_operations.insert(f_operations.begin() + counter2, '(');
+					operations.insert(operations.begin() + counter2, '(');
 					counter+=1;
 				} //endif )
 
 
-			} else if (f_operations[counter + 1] == '(') { //if the next operation is a bracket
-				if (f_operations[counter - 1] == 'x') {
+			} else if (operations[counter + 1] == '(') { //if the next operation is a bracket
+				if (operations[counter - 1] == 'x') {
 					//x * () = (x * ())
-					f_operations.insert(f_operations.begin() + counter - 1, '(');
+					operations.insert(operations.begin() + counter - 1, '(');
 					counter++;
 					int counter2 = counter + 1; //starting at what is already checked because it is incremented in the main loop
-					int net_left = 1;
-					std::printf("\n");
-					while (net_left != 0) {
-						if (f_operations[++counter2] == ')') {
-							net_left--;
-						} else if (f_operations[counter2] == '(') {
-							net_left++;
+					int net_right = 1;	//as stated above the number net number of right brackets needs to be kept track of in order to add the bracket in the right spot
+					while (net_right != 0) {
+						if (operations[++counter2] == ')') {
+							net_right--;
+						} else if (operations[counter2] == '(') {
+							net_right++;
 						}
 					}
-					f_operations.insert(f_operations.begin() + counter2 + 1, ')');
+					operations.insert(operations.begin() + counter2 + 1, ')');
 
 				} //endif 'x'
 
 				//iterate multiple times
-				else if (f_operations[counter - 1] == ')') {
+				else if (operations[counter - 1] == ')') {
 					//() * () = (() * ())
+
+					//same alorithm as above but repeated in both directions
+					//using a slight modification of this algorithm would allow for a general way to bracket
+
 					//left bracket
 					int counter2 = counter + 1;
 					int net_left = 1;
-					std::printf("\n");
+
 					while (net_left != 0) {
-						if (f_operations[++counter2] == ')') {
+						if (operations[++counter2] == ')') {
 							net_left--;
-						} else if (f_operations[counter2] == '(') {
+						} else if (operations[counter2] == '(') {
 							net_left++;
 						}
 
 					}
-					f_operations.insert(f_operations.begin() + counter2 + 1, ')');
+					operations.insert(operations.begin() + counter2 + 1, ')');
 
 					//right bracket
 					counter2 = counter - 1;
 					net_left = 1;
 					while (net_left != 0) {
-						if (f_operations[--counter2] == ')') {
+						if (operations[--counter2] == ')') {
 							net_left++;
-						} else if (f_operations[counter2] == '(') {
+						} else if (operations[counter2] == '(') {
 							net_left--;
 						}
 					}
 
-					f_operations.insert(f_operations.begin() + counter2, '(');
+					operations.insert(operations.begin() + counter2, '(');
 					counter+=1;
 
 
@@ -178,18 +186,12 @@ int main() {
 			} //endif (
 
 		}	//endif 'x'
-		counter++;
+
 	} //end loop
 
+	double answer = evaluate_expression(nums, operations);	//runs the 'evaluate_expression' stated in helper.h with in inputs created by the previous code
 
-	for (const auto& operation : f_operations) {
-		std::cout << operation;
-	}
-	std::printf("\n");
-
-	double answer = evaluate_expression(nums, f_operations);
-
-	std::cout << "answer: " << answer << std::endl;
+	std::cout << "answer:\t" << answer << std::endl;
 
 	return 0;
 }
