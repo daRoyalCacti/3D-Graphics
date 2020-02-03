@@ -1,9 +1,10 @@
 #pragma once
 
+
 //#define NODEBUG //redundent -- now defined in makefile for debug builds
 
 #define player_camera
-//#define vsync
+//#define vsync		//is currently broken
 
 
 
@@ -15,7 +16,7 @@
 		#define detailed_timing
 	#endif
 
-	#define gore_detail
+	//#define gore_detail
 	//#define framerate
 #endif
 

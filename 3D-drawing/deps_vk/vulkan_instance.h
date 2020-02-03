@@ -1,6 +1,10 @@
 #pragma once
 #include <vector>		//for std::vector used throughout
 #include <optional> //for std::optional used in the QueueFamilyIndices struct
+#include <thread>
+
+#include <time.h> 	//to get the current time using time(0)
+#include <fstream>	//for initilising the timing file
 
 #include "Pixels.h"	//for pixels which is used to create a pointer which the texture data will be read into
 
@@ -9,7 +13,7 @@
 #include "ubos.h"									//for defining the uniform buffer object and the uniform buffer as well as the movement data type needed for moving meshes
 #include "static_simple_mesh.h"		//for the rendering and loading of static meshes
 #include "moving_simple_mesh.h"		//for the rendering and loading of animated meshes
-
+#include "global.h"			//for preprocessor definitions
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -50,12 +54,14 @@ extern playerCamera camera;
 
 class vulkanApp {
 public:
+
+
 	void run();
 
 	void initWindow();
 	void loadData();
 
-	void initVulkan();
+	void initVulkan(std::thread* data_thread);
 	void mainLoop();
 	void cleanup();
 
@@ -64,12 +70,19 @@ public:
 
 	int framecounter = 0;
 
+	vulkanApp() {
+
+	}
+
+	~vulkanApp() {
+
+	}
 
 	GLFWwindow* window;
 
 private:
-	int no_mesh;
-	int no_m_mesh;
+	uint32_t no_mesh;
+	uint32_t no_m_mesh;
 
 	int framecounter_pos = framecounter;
 
@@ -88,8 +101,8 @@ private:
 		float camera_pitchs[no_camera_positions];
 	#endif
 
-
 	const char* window_name = "Vulkan";
+
 
 
 	VkInstance instance;
@@ -237,7 +250,8 @@ private:
 
 	int rateDeviceSuitability(VkPhysicalDevice);
 
-
+	void test1();
+	void test2();
 
 
 };

@@ -1,65 +1,89 @@
 CC = g++
 
-IDIR = deps_vk
-IDIR2 = deps_general
-_DEPS = $(wildcard $(IDIR)/*.h)
-_DEPS2 = $(wildcard $(IDIR2)/*.h)
-##DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS)) $(patsubst %,$(IDIR2)/%,$(_DEPS2))
-DEPS = $(patsubst %,%,$(_DEPS)) $(patsubst %,%,$(_DEPS2))
+##header files
+	##directories which contain headers
+IDIR_VK = deps_vk
+IDIR_GEN = deps_general
+	##grabbing all header files in the directories above
+DEPS = $(wildcard $(IDIR_VK)/*.h) $(wildcard $(IDIR_GEN)/*.h)
 
-##_DEPS = data.h global.h Pixels.h player_camera.h window_inputs.h
-##_DEPS2 = Buffer.h callbacks.h decriptorSetLayout.h graphicsPipeline.h moving_simple_mesh.h staging_buffer.h static_simple_mesh.h Texture.h ubos.h vertex.h vulkan_help.h vulkan_instance.h
-
+##cpp files
+	##.o output locations
 ODIR = compiler_objects
-SOURCE_DIR = src_vk
-SOURCE_DIR2 = src_general
-_OBJ = $(wildcard $(SOURCE_DIR)/*.cpp)
-_OBJ2 = $(wildcard $(SOURCE_DIR2)/*.cpp)
-OBJ_DEBUG = $(patsubst $(SOURCE_DIR)/%.cpp,$(ODIR)/DEBUG/%.o,$(_OBJ)) $(patsubst $(SOURCE_DIR2)/%.cpp,$(ODIR)/DEBUG/%.o,$(_OBJ2)) $(ODIR)/DEBUG/main.o
-OBJ_RELEASE = $(patsubst $(SOURCE_DIR)/%.cpp,$(ODIR)/RELEASE/%.o,$(_OBJ))
+	##directories which contain cpp files
+SOURCE_DIR_VK = src_vk
+SOURCE_DIR_GEN = src_general
+	##grabbing all cpp files in the directories above
+_OBJ = $(wildcard $(SOURCE_DIR_VK)/*.cpp)
+_OBJ2 = $(wildcard $(SOURCE_DIR_GEN)/*.cpp)
+	##turning the cpp files to obj files
+OBJ_DEBUG = $(patsubst $(SOURCE_DIR_VK)/%.cpp,$(ODIR)/DEBUG/%.o,$(_OBJ)) $(patsubst $(SOURCE_DIR_GEN)/%.cpp,$(ODIR)/DEBUG/%.o,$(_OBJ2)) $(ODIR)/DEBUG/main.o
+OBJ_RELEASE = $(patsubst $(SOURCE_DIR_VK)/%.cpp,$(ODIR)/RELEASE/%.o,$(_OBJ)) $(patsubst $(SOURCE_DIR_GEN)/%.cpp,$(ODIR)/RELEASE/%.o,$(_OBJ2)) $(ODIR)/RELEASE/main.o
 
-
+##libraries that are not at /usr/include/
 VULKAN_SDK_PATH = /home/george/Documents/Projects/Libraries/Vulkan-1.1.130.0/x86_64
-STB_INCLUDE_PATH  = /home/george/Documents/Projects/Libraries/stb-master
-GLFW_INCLUDE_PATH = /usr/include/GLFW/
-GLM_PATH = /usr/include/glm/
 
-
-DEBUG_OPTIONS = -g
-RELEASE_OPTIONS = -Ofast -D NODEBUG
-
+##flags
+	##vulkan compile flags
 VKFLAGS = -lvulkan
-##GLFLAGS = -lGL
-CFLAGS = -std=c++17 -I$(VULKAN_SDK_PATH)/include -I$(STB_INCLUDE_PATH) -I$(IDIR) -I$(IDIR2) -I$(GLFW_INCLUDE_PATH) -I$(GLM_PATH) -fopenmp -pthread -MMD
-LDFLAGS = -L$(VULKAN_SDK_PATH)/lib `pkg-config --static --libs glfw3` $(VKFLAGS) ##$(GLFLAGS)
-WFLAGS =  -Wall -Wextra -Wfloat-equal -Wundef -Wcast-align -Wwrite-strings -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow -Woverloaded-virtual
+	##warning flags
+WFLAGS =  -Wall -Wextra -Wfloat-equal -Wundef -Wcast-align -Wwrite-strings -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow -Woverloaded-virtual -Wmissing-include-dirs -Wunknown-pragmas -Wduplicated-cond -Wfloat-equal -Wshadow -Wunsafe-loop-optimizations -Wpacked -Wsuggest-attribute=pure -Wsuggest-attribute=const -Wsuggest-attribute=noreturn -Wmissing-noreturn -Wsuggest-attribute=malloc -Wsuggest-attribute=format -Wmissing-format-attribute -Wsuggest-attribute=cold
+	##rejected warning flags that might be used in the future
+##-Winline
+##-Wcast-qual
+##-Wpointer-arith
+##-Wsign-conversion
+##-Wold-style-cast
+	##compile flags
+CFLAGS = -std=c++17 -I$(VULKAN_SDK_PATH)/include -I$(IDIR_VK) -I$(IDIR_GEN) -fopenmp -pthread -MMD $(WFLAGS)
+	##linking flags
+LDFLAGS = -L$(VULKAN_SDK_PATH)/lib `pkg-config --static --libs glfw3` $(VKFLAGS)
 
+	##debug mode compiler flags
+DEBUG_OPTIONS =
+##-g
+	##release mode compiler flags
+RELEASE_OPTIONS = -Ofast -D NODEBUG -fkeep-inline-functions -fkeep-static-functions -fmerge-all-constants -fmodulo-sched
+
+##build targets
 EXE_DEBUG = BUILD_DEBUG
 EXE_RELEASE = BUILD_RELEASE
 
 
 ##debug compiling
+	##creating .o's
+		##same dir as makefile -- main.cpp
 $(ODIR)/DEBUG/%.o: %.cpp $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS) $(DEBUG_OPTIONS) $(WFLAGS)
+	$(CC) -c -o $@ $< $(CFLAGS) $(DEBUG_OPTIONS)
 
-$(ODIR)/DEBUG/%.o: $(SOURCE_DIR)/%.cpp $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS) $(DEBUG_OPTIONS) $(WFLAGS)
+		##rest of stated directories
+$(ODIR)/DEBUG/%.o: $(SOURCE_DIR_VK)/%.cpp $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS) $(DEBUG_OPTIONS)
 
-$(ODIR)/DEBUG/%.o: $(SOURCE_DIR2)/%.cpp $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS) $(DEBUG_OPTIONS) $(WFLAGS)
+$(ODIR)/DEBUG/%.o: $(SOURCE_DIR_GEN)/%.cpp $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS) $(DEBUG_OPTIONS)
 
+	##linking
 $(EXE_DEBUG): $(OBJ_DEBUG)
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(WFLAGS)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 
 ##release compiling
-$(ODIR)/RELEASE/%.o: $(SOURCE_DIR)/%.cpp $(DEPS)
-	$(CC) -c -o $@ $< $(CFLAGS) $(RELEASE_OPTIONS) $(WFLAGS)
+##creating .o's
+##same dir as makefile -- main.cpp
+$(ODIR)/RELEASE/%.o: %.cpp $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS) $(RELEASE_OPTIONS)
 
+		##rest of stated directories
+$(ODIR)/RELEASE/%.o: $(SOURCE_DIR_VK)/%.cpp $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS) $(RELEASE_OPTIONS)
+
+$(ODIR)/RELEASE/%.o: $(SOURCE_DIR_GEN)/%.cpp $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS) $(RELEASE_OPTIONS)
+
+	##linking
 $(EXE_RELEASE): $(OBJ_RELEASE)
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(WFLAGS)
-
-##-include $(_OBJ:.o=.d)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 
 .PHONY: test clean
@@ -78,7 +102,7 @@ test_debug: $(EXE_DEBUG)
 	LD_LIBRARY_PATH=$(VULKAN_SDK_PATH)/lib VK_LAYER_PATH=$(VULKAN_SDK_PATH)/etc/vulkan/explicit_layer.d ./$(EXE_DEBUG)
 
 test_release: $(EXE_RELEASE)
-	LD_LIBRARY_PATH=$(VULKAN_SDK_PATH)/lib VK_LAYER_PATH=$(VULKAN_SDK_PATH)/etc/vulkan/explicit_layer.d ./$(EXE_RELEASE)
+	./$(EXE_RELEASE)
 
 clean_debug:
 	rm -f $(ODIR)/DEBUG/*.o *~ $(INCDIR)/*~
@@ -94,6 +118,7 @@ clean:
 	rm -f $(ODIR)/DEBUG/*.d *~ $(INCDIR)/*~ $(ODIR)/DEBUG/*.d *~
 	rm -f $(ODIR)/RELEASE/*.d *~ $(INCDIR)/*~ $(ODIR)/DEBUG/*.d *~
 
+##as if the program had never been compiled
 wipe:
 	rm -f $(ODIR)/DEBUG/*.o *~ $(INCDIR)/*~ $(EXE_DEBUG)
 	rm -f $(ODIR)/RELEASE/*.o *~ $(INCDIR)/*~ $(EXE_RELEASE)

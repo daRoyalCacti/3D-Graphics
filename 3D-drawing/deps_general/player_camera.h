@@ -14,16 +14,8 @@ struct playerCamera {
 	float Yaw = 230.0f;
 	float Pitch = -40.0f;
 	float fov = 45.0f;
-	//is in definite need of fixing \/
-#ifdef _WIN32
-	float MovementSpeed = 0.001f;
-#else
-	#ifdef vsync
-		float MovementSpeed = 0.04f;
-	#else
-		float MovementSpeed = 0.0004f;
-	#endif
-#endif
+  float MovementSpeed = 1.0f; //is changed first frame but just to be safe
+  float targetSpeed = 5.0f;
 	float MouseSensitivity = 0.1f;
 	glm::vec3 temp;
 
@@ -45,7 +37,8 @@ struct playerCamera {
 		Yaw += xoff;
 		Pitch += yoff;
 
-		if (Pitch > 89.9f) Pitch = 89.9f; if (Pitch < -89.9f) Pitch = -89.9f;
+		if (Pitch > 89.9f) Pitch = 89.9f;
+		if (Pitch < -89.9f) Pitch = -89.9f;
 	}
 
 	inline void move_forward(){

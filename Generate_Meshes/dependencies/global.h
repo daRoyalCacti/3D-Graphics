@@ -21,4 +21,8 @@ namespace global {
   std::vector<std::vector<float*>> all_translations;
   std::vector<std::vector<float*>> all_rotations;
 
+  std::vector<uint32_t> static_texture_ids;
+  std::vector<uint32_t> moving_texture_ids;
+  std::vector<uint32_t> texture_data;
+
 }

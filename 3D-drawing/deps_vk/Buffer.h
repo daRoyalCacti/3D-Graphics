@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <cstring>
 #include "vulkan/vulkan.h"
-
+ 
 namespace GBF {
 	struct Buffer {
 		//this is a simple wrapper around some helper functions
@@ -20,7 +20,8 @@ namespace GBF {
 		void* mapped = nullptr;
 
 		Buffer() {} //this constructor is for when it is convenient to set the comonents using dot notation
-		Buffer(VkBuffer* buffer_, VkDeviceMemory* memory_ = VK_NULL_HANDLE, VkDeviceSize size_ = 0, VkDeviceSize offset_ = 0) : size(size_), offset(offset_), buffer(buffer_), memory(memory_)  {	}
+		Buffer(VkBuffer* buffer_, VkDeviceMemory* memory_ = VK_NULL_HANDLE, VkDeviceSize size_ = 0, VkDeviceSize offset_ = 0) : buffer(buffer_), memory(memory_), size(size_), offset(offset_) { }
+			//order of variables initialised must line up with order they are declared
 
 		inline void create(VkDevice device, VkPhysicalDevice physicalDevice, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) {
 			//this calls the create buffer function from 'vulkan_help.h'

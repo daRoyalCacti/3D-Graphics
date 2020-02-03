@@ -29,7 +29,7 @@ private:
 public:
 
 
-  const char* programPath = "./gpu_code/square.cl";
+  const char* programPath = "/home/george/Documents/Projects/CPP/GPGPU/gpu_code/square.cl";//"./gpu_code/square.cl";
 
   cl_kernel kernel;
 

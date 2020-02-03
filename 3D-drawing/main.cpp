@@ -3,6 +3,7 @@
 #include <chrono>							//for timing
 #include "vulkan_instance.h"	//for all vulkan functions
 #include "window_inputs.h" 		//for processing keyboard inputs
+#include "global.h"
 
 #ifdef _WIN32
 	#include <windows.h> 				//for closing console
@@ -29,10 +30,10 @@ int main() {
 		std::thread thread1(&vulkanApp::loadData, &app);			//reading the mesh data from files
 		std::thread thread2(&vulkanApp::initWindow, &app);		//creating the window which vulkan will write to
 		//the 2 can be exectued in parallel because they share no data
-		thread1.join();
+		//thread1.join();
 		thread2.join();
 
-		app.initVulkan(); 		//initialising vulkan
+		app.initVulkan(&thread1); 		//initialising vulkan
 													//this can not be done in parallel because the surface created by "initWindow" needs to be used for initilising vulkan
 
 		while (!glfwWindowShouldClose(app.window)) {	//keep the loop going until it is decided that the window should close
@@ -53,7 +54,7 @@ int main() {
 		app.cleanup();			//destroying resources used by vulkan
 	}
 	catch (const std::exception& e) {
-		std::cerr << e.what() << std::endl;					//logging the error
+		std::cerr << e.what() << std::endl;					//logging the error to standard output
 		std::cout << "\nProgram has crashed!" << std::endl;
 
 		#ifdef _WIN32
@@ -63,5 +64,13 @@ int main() {
 		return EXIT_FAILURE; //program creashed so of course return failure
 	}
 
+
+	#ifdef _WIN32
+		#ifdef	NODEBUG
+			//getchar();	//the console closes to quickly for the cleaup time to read
+										//this is almost always commented because cleanup times are generally not of a huge concern but pressing enter when the program has finished gets annoying
+		#endif
+	#endif
+	
 	return EXIT_SUCCESS; //program completed normally
 }

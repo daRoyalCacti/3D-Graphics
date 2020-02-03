@@ -16,9 +16,13 @@
 #include "decriptorSetLayout.h"		//helper functions for creating the descriptor set layout
 #include "graphicsPipeline.h"			//helper functions for creating the graphics pipeline
 #include "callbacks.h"
+ 
 
-#include <thread>					//currently used for logging the number of threads -- plans to add concurrency
+#include <omp.h>					//only used for logging the amount of threads -- likely a better way of doing it
 #include <GLFW/glfw3.h>		//for creating the window and getting keyboard and mouse inputs
+
+#define STB_IMAGE_IMPLEMENTATION	//needs to be defined early for stb to work correctly
+#include <stb_image.h>						//not used in this file but needs to be included for the def above to work
 
 #define GLM_FORCE_RADIANS										//to make glm use radians
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES	//to force glm to space vectors in the way that the shader wants
@@ -26,12 +30,12 @@
 #include <glm/glm.hpp>											//main glm header
 #include <glm/gtc/matrix_transform.hpp>			//for glm::rotate, glm::translate and similar
 
-#include <future>		//the return type of std::async (from <thread>)
 
 //for setting ubo.perspective using glm::perspective
 const float fov = 45.0f;
 const float near_plane = 0.1f;
 const float far_plane = 100.0f;
+
 
 playerCamera camera;	//referencing the extern variable defined in the main header
 
@@ -46,54 +50,62 @@ void vulkanApp::loadData() {
 #ifdef timing
 	auto start = std::chrono::steady_clock::now();
 #endif
-
-	std::future<uint32_t> mesh_no = std::async(&files::read_Simple_Static_mesh);
-
-	std::future<uint32_t> m_mesh_no = std::async(&files::read_Simple_Moving_mesh);
-
-	auto ubo_no = std::async(&files::read_ubo);
-
-	std::future<uint32_t> image_no = std::async(&files::read_texture);
-
-	no_mesh = mesh_no.get();
-	no_m_mesh = m_mesh_no.get();
-	ubo_no.wait();
-	uint32_t no_image = image_no.get();
-
-
-	//keeping around for a while because having trouble with seg faults
-	/*no_mesh = files::read_Simple_Static_mesh();
-
-	no_m_mesh = files::read_Simple_Moving_mesh();
-
-	files::read_ubo();*/
-
-
-
-
-
-	//uint32_t no_image = files::read_texture();	//assumed to be the same as the number of mesh //!!need to update to be otherwise
-																							//cannot be read async because it depends on the values read for the meshes
-																							//wouldn't be any point because it stupid fast
-
-
+	no_mesh = vk_files::read_Simple_Static_mesh();
+#ifdef detailed_timing
+	auto end0 = std::chrono::steady_clock::now();
+	std::cout << "\t Mesh reading took \t\t\t" << std::chrono::duration <double, std::milli>(end0 - start).count() << "ms" << std::endl;
+	auto start1 = std::chrono::steady_clock::now();
+#endif
 	staticMeshes = new staticSimpleMesh[no_mesh];
+	vk_files::Vertices_to_Simple_Static_Mesh(staticMeshes);
+#ifdef detailed_timing
+	auto end1 = std::chrono::steady_clock::now();
+	std::cout << "\t Vertex array filling took \t\t" << std::chrono::duration <double, std::milli>(end1 - start1).count() << "ms" << std::endl;
+	auto start2 = std::chrono::steady_clock::now();
+#endif
+	no_m_mesh = vk_files::read_Simple_Moving_mesh();
 	movingMeshes = new moving_simple_mesh[no_m_mesh];
+
+#ifdef detailed_timing
+	auto end2 = std::chrono::steady_clock::now();
+	std::cout << "\t Moving mesh reading took \t\t" << std::chrono::duration <double, std::milli>(end2 - start2).count() << "ms" << std::endl;
+	auto start21 = std::chrono::steady_clock::now();
+#endif
+	vk_files::Vertices_to_Simple_Moving_Mesh(movingMeshes);
+#ifdef detailed_timing
+	auto end21 = std::chrono::steady_clock::now();
+	std::cout << "\t Moving vertex array filling took \t" << std::chrono::duration <double, std::milli>(end21 - start21).count() << "ms" << std::endl;
+	auto start22 = std::chrono::steady_clock::now();
+#endif
+vk_files::read_ubo(); //WIP
+#ifdef detailed_timing
+auto end22 = std::chrono::steady_clock::now();
+std::cout << "\t UBO reading took \t\t\t" << std::chrono::duration <double, std::milli>(end22 - start22).count() << "ms" << std::endl;
+auto start3 = std::chrono::steady_clock::now();
+#endif
+
 	square_model = new ubo_model[no_mesh + no_m_mesh];
+	vk_files::Rotations_to_UBOs(square_model);
+#ifdef detailed_timing
+	auto end3 = std::chrono::steady_clock::now();
+	std::cout << "\t Rotation array filling took \t\t" << std::chrono::duration <double, std::milli>(end3 - start3).count() << "ms" << std::endl;
+	auto start4 = std::chrono::steady_clock::now();
+#endif
+
+	int no_image = vk_files::read_texture(); //assumed to be the same as no_mesh //!!need to update to be otherwise
+#ifdef detailed_timing
+	auto end4 = std::chrono::steady_clock::now();
+	std::cout << "\t Texture data reading took \t\t" << std::chrono::duration <double, std::milli>(end4 - start4).count() << "ms" << std::endl;
+	auto start5 = std::chrono::steady_clock::now();
+#endif
 	imagePixels = new pixels[no_image];
+	vk_files::Texture_to_Pixels(imagePixels); //slow because reading pngs??? not good library????
+#ifdef detailed_timing
+	auto end5 = std::chrono::steady_clock::now();
+	std::cout << "\t Texture reading took \t\t\t" << std::chrono::duration <double, std::milli>(end5 - start5).count() << "ms" << std::endl;
+#endif
 
-	//this is done very messy -- need to update in the future
-	std::thread static_thread(&files::vk::Vertices_to_Simple_Static_Mesh, staticMeshes);
-	std::thread moving_therad(&files::vk::Vertices_to_Simple_Moving_Mesh, movingMeshes);
-	std::thread rotations_thread(&files::vk::Rotations_to_UBOs, square_model);
-	std::thread texture_thread(&files::vk::Texture_to_Pixels, imagePixels);
-
-	static_thread.join();
-	moving_therad.join();
-	rotations_thread.join();
-	texture_thread.join();
-
-/*#ifdef precalculated_player_camera
+#ifdef precalculated_player_camera
 	#ifdef detailed_timing
 		auto start6 = std::chrono::steady_clock::now();
 	#endif
@@ -102,7 +114,7 @@ void vulkanApp::loadData() {
 		auto end6 = std::chrono::steady_clock::now();
 		std::cout << "\t Camera reading took \t\t\t" << std::chrono::duration <double, std::milli>(end6 - start6).count() << "ms" << std::endl;
 	#endif
-#endif*/
+#endif
 
 #ifdef timing
 	auto end = std::chrono::steady_clock::now();
@@ -120,7 +132,7 @@ void vulkanApp::run() {
 	loadData();
 
 	initWindow();
-	//initVulkan();
+	initVulkan();
 	mainLoop();
 	cleanup();
 }
@@ -156,75 +168,168 @@ void vulkanApp::initWindow() {
 
 
 
-void vulkanApp::initVulkan(std::thread* data_thread) {
-	//because the beginning of the initilisation does not depend on any data, the thread the data function is being exectued on is passed here
-	// - this will only increase performance for large enough meshes
+void vulkanApp::initVulkan() {
+
 #ifdef timing
-	auto start = std::chrono::steady_clock::now();
+	auto start0 = std::chrono::steady_clock::now();
 #endif
-
 	createInstance();
-
+#ifdef detailed_timing
+	auto end0 = std::chrono::steady_clock::now();
+	std::cout << "\t Instance creation took \t\t" << std::chrono::duration <double, std::milli>(end0 - start0).count() << "ms" << std::endl;
+	auto start1 = std::chrono::steady_clock::now();
+#endif
 	setupDebugMessenger();
-
+#ifdef detailed_timing
+	auto end1 = std::chrono::steady_clock::now();
+	std::cout << "\t Debug messenger createion took \t" << std::chrono::duration <double, std::milli>(end1 - start1).count() << "ms" << std::endl;
+	auto start2 = std::chrono::steady_clock::now();
+#endif
 	createSurface();
-
+#ifdef detailed_timing
+	auto end2 = std::chrono::steady_clock::now();
+	std::cout << "\t Surface Creation took \t\t\t" << std::chrono::duration <double, std::milli>(end2 - start2).count() << "ms" << std::endl;
+	auto start3 = std::chrono::steady_clock::now();
+#endif
 	pickPhysicalDevice();
-
+#ifdef detailed_timing
+	auto end3 = std::chrono::steady_clock::now();
+	std::cout << "\t Physical Device selection took \t" << std::chrono::duration <double, std::milli>(end3 - start3).count() << "ms" << std::endl;
+	auto start4 = std::chrono::steady_clock::now();
+#endif
 	createLogicalDevice();
-
+#ifdef detailed_timing
+	auto end4 = std::chrono::steady_clock::now();
+	std::cout << "\t Logical device creation took \t\t" << std::chrono::duration <double, std::milli>(end4 - start4).count() << "ms" << std::endl;
+	auto start5 = std::chrono::steady_clock::now();
+#endif
 	createSwapChain();
-
+#ifdef detailed_timing
+	auto end5 = std::chrono::steady_clock::now();
+	std::cout << "\t Swap chain creation took \t\t" << std::chrono::duration <double, std::milli>(end5 - start5).count() << "ms" << std::endl;
+	auto start6 = std::chrono::steady_clock::now();
+#endif
 	createImageViews();
-
+#ifdef detailed_timing
+	auto end6 = std::chrono::steady_clock::now();
+	std::cout << "\t Image View creation took \t\t" << std::chrono::duration <double, std::milli>(end6 - start6).count() << "ms" << std::endl;
+	auto start7 = std::chrono::steady_clock::now();
+#endif
 	createRenderPass();
-
+#ifdef detailed_timing
+	auto end7 = std::chrono::steady_clock::now();
+	std::cout << "\t Render Pass creation took \t\t" << std::chrono::duration <double, std::milli>(end7 - start7).count() << "ms" << std::endl;
+	auto start8 = std::chrono::steady_clock::now();
+#endif
 	createDescriptorSetLayout();
-
+#ifdef detailed_timing
+	auto end8 = std::chrono::steady_clock::now();
+	std::cout << "\t Descriptor set layout creation took \t" << std::chrono::duration <double, std::milli>(end8 - start8).count() << "ms" << std::endl;
+	auto start9 = std::chrono::steady_clock::now();
+#endif
 	createGraphicsPipeline();
-
+#ifdef detailed_timing
+	auto end9 = std::chrono::steady_clock::now();
+	std::cout << "\t Graphics pipeline creation took \t" << std::chrono::duration <double, std::milli>(end9 - start9).count() << "ms" << std::endl;
+	auto start10 = std::chrono::steady_clock::now();
+#endif
 	createCommandPool();
-
+#ifdef detailed_timing
+	auto end10 = std::chrono::steady_clock::now();
+	std::cout << "\t Command Pool creation took \t\t" << std::chrono::duration <double, std::milli>(end10 - start10).count() << "ms" << std::endl;
+	auto start11 = std::chrono::steady_clock::now();
+#endif
 	createDepthResources();
-
+#ifdef detailed_timing
+	auto end11 = std::chrono::steady_clock::now();
+	std::cout << "\t DepthResource creation took \t\t" << std::chrono::duration <double, std::milli>(end11 - start11).count() << "ms" << std::endl;
+	auto start12 = std::chrono::steady_clock::now();
+#endif
 	createFramebuffers();
-
-	data_thread->join();
-
+#ifdef detailed_timing
+	auto end12 = std::chrono::steady_clock::now();
+	std::cout << "\t Framebuffer creation took \t\t" << std::chrono::duration <double, std::milli>(end12 - start12).count() << "ms" << std::endl;
+	auto start13 = std::chrono::steady_clock::now();
+#endif
 	createTextureImage();
-
+#ifdef detailed_timing
+	auto end13 = std::chrono::steady_clock::now();
+	std::cout << "\t Texture Image creation took \t\t" << std::chrono::duration <double, std::milli>(end13 - start13).count() << "ms" << std::endl;
+	auto start14 = std::chrono::steady_clock::now();
+#endif
 	createTextureImageView();
-
+#ifdef detailed_timing
+	auto end14 = std::chrono::steady_clock::now();
+	std::cout << "\t Texter Image View creation took \t" << std::chrono::duration <double, std::milli>(end14 - start14).count() << "ms" << std::endl;
+	auto start15 = std::chrono::steady_clock::now();
+#endif
 	createTextureSampler();
 
+#ifdef detailed_timing
+	auto end15 = std::chrono::steady_clock::now();
+	std::cout << "\t Texture Sampler creation took \t\t" << std::chrono::duration <double, std::milli>(end15 - start15).count() << "ms" << std::endl;
+	auto start16 = std::chrono::steady_clock::now();
+#endif
 	createVertexBuffer();
-
+#ifdef detailed_timing
+	auto end16 = std::chrono::steady_clock::now();
+	std::cout << "\t Vertex Buffer Creation took \t\t" << std::chrono::duration <double, std::milli>(end16 - start16).count() << "ms" << std::endl;
+	auto start17 = std::chrono::steady_clock::now();
+#endif
 	createIndexBuffer();
-
+#ifdef detailed_timing
+	auto end17 = std::chrono::steady_clock::now();
+	std::cout << "\t Index Buffer Creation took \t\t" << std::chrono::duration <double, std::milli>(end17 - start17).count() << "ms" << std::endl;
+	auto start18 = std::chrono::steady_clock::now();
+#endif
 	createUniformBuffers();
-
+#ifdef detailed_timing
+	auto end18 = std::chrono::steady_clock::now();
+	std::cout << "\t Uniform Buffer Creation took \t\t" << std::chrono::duration <double, std::milli>(end18 - start18).count() << "ms" << std::endl;
+	auto start19 = std::chrono::steady_clock::now();
+#endif
 	createDescriptorPool();
-
+#ifdef detailed_timing
+	auto end19 = std::chrono::steady_clock::now();
+	std::cout << "\t Descriptor Pool creation took \t\t" << std::chrono::duration <double, std::milli>(end19 - start19).count() << "ms" << std::endl;
+	auto start20 = std::chrono::steady_clock::now();
+#endif
 	createDescriptorSets();
-
+#ifdef detailed_timing
+	auto end20 = std::chrono::steady_clock::now();
+	std::cout << "\t Descriptor Set creation took \t\t" << std::chrono::duration <double, std::milli>(end20 - start20).count() << "ms" << std::endl;
+	auto start21 = std::chrono::steady_clock::now();
+#endif
 	createCommandBuffers();
 
-	createSyncObjects();
+
+#ifdef detailed_timing
+	auto end21 = std::chrono::steady_clock::now();
+	std::cout << "\t Command Buffer creation took \t\t" << std::chrono::duration <double, std::milli>(end21 - start21).count() << "ms" << std::endl;
+	auto start22 = std::chrono::steady_clock::now();
+#endif
+	createSyncObjects();//
+
 
 
 #ifdef timing
-	auto end = std::chrono::steady_clock::now();
-	std::cout << "Vulkan initilisation took \t\t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
+	auto end22 = std::chrono::steady_clock::now();
+#endif
+#ifdef detailed_timing
+	std::cout << "\t Sync Object creation took \t\t" << std::chrono::duration <double, std::milli>(end22 - start22).count() << "ms" << std::endl;
+#endif
+
+#ifdef timing
+	std::cout << "Vulkan initilisation took \t\t\t" << std::chrono::duration <double, std::milli>(end22 - start0).count() << "ms" << std::endl;
 #endif
 
 #ifndef NODEBUG
-	//logging information
 	VkPhysicalDeviceProperties physicalDeviceProperties;
 	vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
 
 	std::cout << "\nUsing " << indentifyDevice(physicalDeviceProperties.deviceType) << " " << physicalDeviceProperties.deviceName << std::endl;
 	std::cout << "\trunning vulkan version " << (physicalDeviceProperties.apiVersion >> 22) << "." << ((physicalDeviceProperties.apiVersion >> 12) & 0x3ff) << "." << (physicalDeviceProperties.apiVersion & 0xfff) << std::endl;
-	std::cout << "Found " << std::thread::hardware_concurrency() << " threads \n" << std::endl;
+	std::cout << "Found " << omp_get_max_threads() << " threads \n" << std::endl;
 #endif
 }
 
@@ -273,12 +378,12 @@ void vulkanApp::cleanup() {
 	auto start = std::chrono::steady_clock::now();
 #endif
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_mesh; i++) {
+	for (int i = 0; i < no_mesh; i++) {
 		staticMeshes[i].cleanup(device);
 	}
 
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_m_mesh; i++) {
+	for (int i = 0; i < no_m_mesh; i++) {
 		movingMeshes[i].Mesh.cleanup(device);
 	}
 
@@ -311,7 +416,6 @@ void vulkanApp::cleanup() {
 	delete [] staticMeshes;
 	delete [] square_model;
 	delete [] movingMeshes;
-	delete [] imagePixels;
 
 	glfwDestroyWindow(window);
 
@@ -324,7 +428,10 @@ void vulkanApp::cleanup() {
 
 }
 
-
+void vulkanApp::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+	auto app = reinterpret_cast<vulkanApp*>(glfwGetWindowUserPointer(window));
+	app->framebufferResized = true;
+}
 
 void vulkanApp::recreateSwapChain() {
 	int width = 0, height = 0;
@@ -353,7 +460,7 @@ void vulkanApp::recreateSwapChain() {
 
 void vulkanApp::drawFrame() {
 
-	for (uint32_t i = 0; i < no_m_mesh; i++) {
+	for (int i = 0; i < no_m_mesh; i++) {
 		movingMeshes[i].updateVertexBuffer(device, framecounter, commandPool, graphicsQueue);
 	}
 
@@ -373,7 +480,6 @@ void vulkanApp::drawFrame() {
 	}
 
 	camera.updateCameraVectors();
-
 	updateUniformBuffers(imageIndex);
 
 
@@ -431,7 +537,7 @@ void vulkanApp::drawFrame() {
 void vulkanApp::updateUniformBuffers(uint32_t currentImage) {
 
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_mesh; i++) {
+	for (int i = 0; i < no_mesh; i++) {
 		staticMeshes[i].ub.ubo.model = square_model[i].frame(framecounter);
 #ifdef player_camera
 		staticMeshes[i].ub.ubo.view = camera.view();
@@ -455,7 +561,7 @@ void vulkanApp::updateUniformBuffers(uint32_t currentImage) {
 	}
 
 #pragma omp parallel for
-	for (uint32_t i = no_mesh; i < no_mesh + no_m_mesh; i++) {
+	for (int i = no_mesh; i < no_mesh + no_m_mesh; i++) {
 		int j = i - no_mesh;
 		movingMeshes[j].Mesh.ub.ubo.model = square_model[i].frame(framecounter);//square_model[i];
 #ifdef player_camera
@@ -511,12 +617,12 @@ void vulkanApp::cleanupSwapChain() {
 
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_mesh; i++) {
+	for (int i = 0; i < no_mesh; i++) {
 		staticMeshes[i].cleanup_swapChain(device);
 	}
 
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_m_mesh; i++) {
+	for (int i = 0; i < no_m_mesh; i++) {
 		movingMeshes[i].Mesh.cleanup_swapChain(device);
 	}
 
@@ -526,10 +632,6 @@ void vulkanApp::cleanupSwapChain() {
 void vulkanApp::createInstance() {
 	//the instance is the connection between the application and the vulkan api -- this function creates an instance
 	//it is used to specify simple application info, extensions, and validation layers
-
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
 
 	if (enableValidationLayers && !checkValidationLayerSupport()) { //what the error states
 		//throw std::runtime_error("validation layers requested, but not available!");
@@ -578,11 +680,6 @@ void vulkanApp::createInstance() {
 		throw std::runtime_error("failed to create instance!");
 	}
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Instance creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
-
 }
 
 void vulkanApp::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
@@ -597,11 +694,6 @@ void vulkanApp::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfo
 void vulkanApp::setupDebugMessenger() {
 	if (!enableValidationLayers) return; //debugging here referres to validation layers -- no need to set up events around validation layers where there are none
 
-	#ifdef detailed_timing
-		//after intial check because it will take no time and results is just a return
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	VkDebugUtilsMessengerCreateInfoEXT createInfo;
 	populateDebugMessengerCreateInfo(createInfo); //helper function to fill the struct
 
@@ -611,33 +703,15 @@ void vulkanApp::setupDebugMessenger() {
 																																																			//see https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Validation_layers for how this works becuse i dont really understand
 		throw std::runtime_error("failed to set up debug messenger!");
 	}
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Debug messenger creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-
-	#endif
 }
 
 void vulkanApp::createSurface() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create window surface!");
 	}
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Surface Creation took \t\t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 void vulkanApp::pickPhysicalDevice() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr); //finding the number of physical devices in the system with vulkan support
 
@@ -691,11 +765,6 @@ void vulkanApp::pickPhysicalDevice() {
 	if (physicalDevice == VK_NULL_HANDLE) {
 		throw std::runtime_error("failed to find a suitable GPU!");
 	}
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Physical Device selection took \t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 int vulkanApp::rateDeviceSuitability(VkPhysicalDevice pdevice) {
@@ -739,10 +808,6 @@ int vulkanApp::rateDeviceSuitability(VkPhysicalDevice pdevice) {
 }
 
 void vulkanApp::createLogicalDevice() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	QueueFamilyIndices indices = findQueueFamilies(physicalDevice); //finding the indices of the graphics queue and present queue
 																																	//more indepth explaination is found inside to code for the function
 
@@ -796,17 +861,9 @@ void vulkanApp::createLogicalDevice() {
 	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);	//retrieving the queue handles for each queue family which is used to refenece the queues throughout the program
 	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Logical device creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 void vulkanApp::createSwapChain() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice); //showish
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -861,14 +918,9 @@ void vulkanApp::createSwapChain() {
 
 	swapChainImageFormat = surfaceFormat.format;
 	swapChainExtent = extent;
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Swap chain creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
-__attribute__((pure)) VkSurfaceFormatKHR vulkanApp::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
+VkSurfaceFormatKHR vulkanApp::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 	for (const auto& availableFormat : availableFormats) {
 		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 			return availableFormat;
@@ -878,7 +930,7 @@ __attribute__((pure)) VkSurfaceFormatKHR vulkanApp::chooseSwapSurfaceFormat(cons
 	return availableFormats[0];
 }
 
-__attribute__((pure)) VkPresentModeKHR vulkanApp::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
+VkPresentModeKHR vulkanApp::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
 	for (const auto& availablePresentMode : availablePresentModes) {
 		#ifdef vsync
 		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
@@ -942,28 +994,16 @@ SwapChainSupportDetails vulkanApp::querySwapChainSupport(VkPhysicalDevice p_devi
 }
 
 void vulkanApp::createImageViews() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	swapChainImageViews.resize(swapChainImages.size());
 
-	//to fast to parallise \/
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
 		swapChainImageViews[i] = createImageView(device, swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Image View creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 
 }
 
 void vulkanApp::createRenderPass() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
 
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = swapChainImageFormat;
@@ -1026,16 +1066,9 @@ void vulkanApp::createRenderPass() {
 		throw std::runtime_error("failed to create render pass!");
 	}
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Render Pass creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 void vulkanApp::createDescriptorSetLayout() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
 
 	VkDescriptorSetLayoutBinding uboLayoutBinding = uboDescriptorLayoutBinding(0);
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = samplerDescriptorLayoutBinding(1);
@@ -1051,18 +1084,12 @@ void vulkanApp::createDescriptorSetLayout() {
 		throw std::runtime_error("failed to create descriptor set layout!");
 	}
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Descriptor set layout creation took \t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
+
 
 }
 
 void vulkanApp::createGraphicsPipeline() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
+//!! fix - is terrible - towards end of online
 	VkShaderModule vertShaderModule = GB::shaderModule(device, "shaders/simple_vert.spv");
 	VkShaderModule fragShaderModule = GB::shaderModule(device, "shaders/simple_frag.spv");
 
@@ -1133,16 +1160,10 @@ void vulkanApp::createGraphicsPipeline() {
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Graphics pipeline creation took \t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
+
 }
 
 void vulkanApp::createFramebuffers() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
 
 	swapChainFramebuffers.resize(swapChainImageViews.size());
 
@@ -1163,17 +1184,9 @@ void vulkanApp::createFramebuffers() {
 		}
 	}
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Framebuffer creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 void vulkanApp::createCommandPool() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
 
 	VkCommandPoolCreateInfo poolInfo = {};
@@ -1184,19 +1197,11 @@ void vulkanApp::createCommandPool() {
 	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create command pool!");
 	}
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Command Pool creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 
 
 void vulkanApp::createDepthResources() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
 
 	VkFormat depthFormat = findDepthFormat();
 
@@ -1204,10 +1209,6 @@ void vulkanApp::createDepthResources() {
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
 	depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t DepthResource creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 VkFormat vulkanApp::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
@@ -1234,9 +1235,7 @@ VkFormat vulkanApp::findDepthFormat() {
 
 
 void vulkanApp::createTextureImage() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
+
 /*
 #pragma omp parallel for
 	for (int i = 0; i < no_images; i++) {
@@ -1244,13 +1243,13 @@ void vulkanApp::createTextureImage() {
 	}*/
 
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_mesh; i++) {
+	for (int i = 0; i < no_mesh; i++) {
 		staticMeshes[i].createTexture(imagePixels[i], device, physicalDevice, commandPool, graphicsQueue);
 	}
 
 #pragma omp parallel for
-	for (uint32_t i = no_mesh; i < no_mesh + no_m_mesh; i++) {
-		uint32_t j = i - no_mesh;
+	for (int i = no_mesh; i < no_mesh + no_m_mesh; i++) {
+		int j = i - no_mesh;
 		movingMeshes[j].Mesh.createTexture(imagePixels[i], device, physicalDevice, commandPool, graphicsQueue);
 	}
 	/*
@@ -1259,53 +1258,26 @@ void vulkanApp::createTextureImage() {
 		Squares[i].TextureCleanupCreation(device);
 	}
 	*/
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Texture Image creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 
-void vulkanApp::test1() {
-	#pragma omp parallel for
-		for (uint32_t i = 0; i < no_mesh; i++) {
-			staticMeshes[i].createTextureImageView(device);
-		}
-}
-
-void vulkanApp::test2() {
-	#pragma omp parallel for
-		for (uint32_t i = 0; i < no_m_mesh; i++) {
-			movingMeshes[i].Mesh.createTextureImageView(device);
-		}
-}
 
 void vulkanApp::createTextureImageView() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
+#pragma omp parallel for
+	for (int i = 0; i < no_mesh; i++) {
+		staticMeshes[i].createTextureImageView(device);
+	}
 
-	//hard to tell if faster because times are so inconsistent
-	std::thread thread1(&vulkanApp::test1, this);
-	std::thread thread2(&vulkanApp::test2, this);
+#pragma omp parallel for
+	for (int i = 0; i < no_m_mesh; i++) {
+		movingMeshes[i].Mesh.createTextureImageView(device);
+	}
 
-
-	thread1.join();
-	thread2.join();
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Texter Image View creation took \t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 
 
 void vulkanApp::createTextureSampler() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	VkSamplerCreateInfo samplerInfo = {};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	samplerInfo.magFilter = VK_FILTER_LINEAR;
@@ -1332,77 +1304,48 @@ void vulkanApp::createTextureSampler() {
 	if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Texture Sampler creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 
 
 void vulkanApp::createVertexBuffer() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_mesh; i++) {
+	for (int i = 0; i < no_mesh; i++) {
 		staticMeshes[i].createVertexBuffer(device, commandPool, graphicsQueue, physicalDevice);
 	}
 
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_m_mesh; i++) {
+	for (int i = 0; i < no_m_mesh; i++) {
 		movingMeshes[i].createVertexBuffer(device, commandPool, graphicsQueue, physicalDevice);
 	}
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Vertex Buffer Creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 
 void vulkanApp::createIndexBuffer() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_mesh; i++) {
+	for (int i = 0; i < no_mesh; i++) {
 		staticMeshes[i].createIndexBuffer(device, commandPool, graphicsQueue, physicalDevice);
 	}
 
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_m_mesh; i++) {
+	for (int i = 0; i < no_m_mesh; i++) {
 		movingMeshes[i].Mesh.createIndexBuffer(device,commandPool, graphicsQueue, physicalDevice);
 	}
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Index Buffer Creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 void vulkanApp::createUniformBuffers() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
+	//VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_mesh; i++) {
+	for (int i = 0; i < no_mesh; i++) {
 		staticMeshes[i].createUb((uint32_t)swapChainImages.size(), device, physicalDevice);
 	}
 
 #pragma omp parallel for
-	for (uint32_t i = 0; i < no_m_mesh; i++) {
+	for (int i = 0; i < no_m_mesh; i++) {
 		movingMeshes[i].Mesh.createUb(static_cast<uint32_t>(swapChainImages.size()), device, physicalDevice);
 	}
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Uniform Buffer Creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 void vulkanApp::createDescriptorPool() {
@@ -1410,10 +1353,6 @@ void vulkanApp::createDescriptorPool() {
 	for (int i = 0; i < no_images; i++) {
 		Squares[i].createDescriptorPool(device); //!not sure
 	}*/
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	//! not sure if complete
 	std::array<VkDescriptorPoolSize,2> poolSizes = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1430,37 +1369,20 @@ void vulkanApp::createDescriptorPool() {
 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor pool!");
 	}
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Descriptor Pool creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 void vulkanApp::createDescriptorSets() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 //#pragma omp parallel for
-	for (uint32_t i = 0; i < no_mesh; i++) {
+	for (int i = 0; i < no_mesh; i++) {
 		staticMeshes[i].createDescriptorSet(descriptorSetLayout, &descriptorPool, device, textureSampler);
 	}
 
-	for (uint32_t i = 0; i < no_m_mesh; i++) {
+	for (int i = 0; i < no_m_mesh; i++) {
 		movingMeshes[i].Mesh.createDescriptorSet(descriptorSetLayout, &descriptorPool, device, textureSampler);
 	}
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Descriptor Set creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 void vulkanApp::createCommandBuffers() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
 
 	commandBuffers.resize(swapChainFramebuffers.size());
 
@@ -1504,11 +1426,11 @@ void vulkanApp::createCommandBuffers() {
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
 //#pragma omp parallel for //might be able to make work
-		for (uint32_t j = 0; j < no_mesh; j++) {
+		for (int j = 0; j < no_mesh; j++) {
 			staticMeshes[j].draw(commandBuffers, pipelineLayout, i);
 		}
 
-		for (uint32_t j = 0; j < no_m_mesh; j++) {
+		for (int j = 0; j < no_m_mesh; j++) {
 			movingMeshes[j].Mesh.draw(commandBuffers, pipelineLayout, i);
 		}
 
@@ -1521,18 +1443,9 @@ void vulkanApp::createCommandBuffers() {
 
 	}
 
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Command Buffer creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
-
 }
 
 void vulkanApp::createSyncObjects() {
-	#ifdef detailed_timing
-		auto start = std::chrono::steady_clock::now();
-	#endif
-
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1554,11 +1467,6 @@ void vulkanApp::createSyncObjects() {
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
 	}
-
-	#ifdef detailed_timing
-		auto end = std::chrono::steady_clock::now();
-		std::cout << "\t Sync Object creation took \t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
-	#endif
 }
 
 
@@ -1736,4 +1644,11 @@ bool vulkanApp::checkValidationLayerSupport() {
 	}
 
 	return true;
+}
+
+VKAPI_ATTR VkBool32 VKAPI_CALL vulkanApp::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) { //callback for when a validation layer throws and error
+	std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl; 	//just write the error to standard output
+																																							//should probably have if statements for message severity
+
+	return VK_FALSE;
 }

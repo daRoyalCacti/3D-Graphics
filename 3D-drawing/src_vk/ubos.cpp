@@ -30,7 +30,8 @@ void UniformBuffer::update(uint32_t currentImage, VkDevice device){
 }
 
 
-glm::mat4 ubo_model::frame(unsigned frame_num) {
+//pure on request of the compiler
+__attribute__((pure)) glm::mat4 ubo_model::frame(unsigned frame_num) {
 		if (modulous) {
 			return models[frame_num % (total_frames)];
 		} else {

@@ -157,11 +157,13 @@ namespace boring {
   }
 
   void create_moving_meshes() {
-    int id;
+    uint32_t id;
+    //mesh 1
     id = new_moving_vertices();
     new_moving_vertices_frame(id, m_Vertices1_0);
     new_moving_vertices_frame(id, m_Vertices1_1);
     new_moving_indices(m_indices1);
+    moving_mesh_has_texture(id, id);
     id = new_moving_uvs();
     new_moving_uvs_frame(id, m_Uvs1_0);
     new_moving_uvs_frame(id, m_Uvs1_0);

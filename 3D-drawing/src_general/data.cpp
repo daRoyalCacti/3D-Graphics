@@ -13,8 +13,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#define redone
-
 namespace files {
   const std::string file_extension = ".bin";
 
@@ -35,6 +33,7 @@ namespace files {
 
   std::vector<std::vector<uint8_t>> images;
   std::vector<size_t> image_dimensions;
+  std::vector<uint32_t> image_ids;
 
 
   std::vector<std::vector<glm::mat4>> rotations; //each mesh needs a rotation and each mesh has multiple frames of rotation
@@ -276,16 +275,13 @@ namespace files {
   }
 
 
+
   uint32_t read_texture() {
     #ifdef detailed_timing
       auto start = std::chrono::steady_clock::now();
     #endif
 
-    #ifndef redone
-    no_image = no_mesh + no_m_mesh; //every mesh has a unique texture -- !!need to fix
-    #endif
 
-    #ifdef redone
     //data reading
     uint32_t initial_reading[2];
     std::ifstream data_file_first("./textures/data" + file_extension, std::ios::binary); data_file_first.read((char*)&initial_reading[0], sizeof(initial_reading) ); data_file_first.close();
@@ -318,18 +314,15 @@ namespace files {
       std::ifstream image_file("./textures/texture_" + std::to_string(i) + file_extension, std::ios::binary); image_file.read((char*)&images[i][0], sizeof(images[i][0]) * images[i].size() ); image_file.close();
     }
 
-    //getchar();
-    /*int texWidth, texHeight, texChannels = 3;
-    uint8_t *pixels = stbi_load("./textures/texture_4.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    uint32_t first_data;
+    std::ifstream t_data_file_first("./Meshes/t_data" + file_extension, std::ios::binary); t_data_file_first.read((char*)&first_data, sizeof(uint32_t) ); t_data_file_first.close();
 
-    for (int j = 0; j < images[4].size(); j++) {
-      std::cout << static_cast<unsigned>(images[4][j]) << " " << static_cast<unsigned>(pixels[j]) << std::endl;
-    }
-    exit(0);*/
+    image_ids.resize(first_data + 1);
+    std::ifstream t_data_file("./Meshes/t_data" + file_extension, std::ios::binary); t_data_file.read((char*)&image_ids[0], (first_data + 1) * sizeof(uint32_t) ); t_data_file.close();
+    image_ids.erase(image_ids.begin()); //it needs all the data without the first element. So just removing the first element
 
     delete [] alldata;
 
-    #endif
 
     #ifdef detailed_timing
     	auto end = std::chrono::steady_clock::now();
@@ -348,26 +341,14 @@ namespace files {
         auto start = std::chrono::steady_clock::now();
       #endif
 
-      #ifndef redone
-      #pragma omp parallel for
+
         for (int i = 0; i < static_cast<int>(no_image); i++) {
-          try {
-            imagePixels[i].read_file("textures/texture_" + std::to_string(i) + ".png"); //the pixel class has a built in way to read files
-          }
-          catch (const std::exception& e) { //if the texture does not exist
-            throw std::runtime_error("failed to read texture file " + std::to_string(i));
-          }
+          imagePixels[i].pixels = new uint8_t[images[image_ids[i]].size()];
+          std::copy(images[image_ids[i]].begin(), images[image_ids[i]].end(), imagePixels[i].pixels);
+          imagePixels[i].texWidth = image_dimensions[2 * image_ids[i]];
+          imagePixels[i].texHeight = image_dimensions[2 * image_ids[i] + 1];
         }
-        #endif
 
-
-        #ifdef redone
-          for (int i = 0; i < static_cast<int>(no_image); i++) {
-            imagePixels[i].pixels = images[i].data();
-            imagePixels[i].texWidth = image_dimensions[2 * i];
-            imagePixels[i].texHeight = image_dimensions[2 * i + 1];
-          }
-        #endif
 
         #ifdef detailed_timing
         	auto end = std::chrono::steady_clock::now();

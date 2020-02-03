@@ -1,7 +1,6 @@
 #include <iostream>
 #include <cstring>
 #include "static_simple_mesh.h"
-#include <stb_image.h>
 #include "Pixels.h"
 #include "Buffer.h"
 
@@ -66,9 +65,9 @@ void staticSimpleMesh::createDescriptorPool(VkDevice device){
 */
 
 
-void staticSimpleMesh::createTexture(std::string file, VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue){
+/*void staticSimpleMesh::createTexture(std::string file, VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue){
 	tex.create(file, device, physicalDevice, commandPool, graphicsQueue);
-}
+}*/
 
 void staticSimpleMesh::createTexture(pixels pix, VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue) {
 	tex.create(pix, device, physicalDevice, commandPool, graphicsQueue);

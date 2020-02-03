@@ -24,7 +24,7 @@ public:
 	void createDescriptorPool(VkDevice device);
 	void createDescriptorSet(VkDescriptorSetLayout descriptorSetLayout, VkDescriptorPool *descriptorPool, VkDevice device, VkSampler textureSampler);
 
-	void createTexture(std::string file, VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue);
+	//void createTexture(std::string file, VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue);
 	void createTexture(pixels pix, VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue);
 
 	void createTextureImageView(VkDevice device);

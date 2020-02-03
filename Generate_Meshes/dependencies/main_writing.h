@@ -3,7 +3,10 @@
 #include <vector>
 #include "global.h"
 #include "helper.h"
+#include <string>
 
+const std::string file_extension = ".bin";
+const std::string file_location = "/home/george/Documents/Projects/Major-3D/3D-drawing/Meshes/";
 
 inline void fillData() {
   //helper function to fill the required array for the data required for reading the static meshes easily
@@ -28,7 +31,7 @@ inline void fillm_Data() {
   }
 }
 
-void fillubo_data() {
+inline void fillubo_data() {
   global::ubo_data.resize(global::all_translations.size() + 1);
   global::ubo_data[0] = global::all_translations.size();
 
@@ -37,7 +40,25 @@ void fillubo_data() {
   }
 }
 
-void write_all() {
+inline void fillt_data() {
+  global::texture_data.resize(global::static_texture_ids.size() + global::moving_texture_ids.size() + 1);
+  global::texture_data[0] = global::static_texture_ids.size() + global::moving_texture_ids.size();
+
+  uint32_t static_size = global::static_texture_ids.size();
+
+  for (uint32_t i = 0; i < static_size; i++) {
+    global::texture_data[i + 1] = global::static_texture_ids[i];
+  }
+
+  uint32_t j;
+  for (uint32_t i = static_size; i < static_size + global::moving_texture_ids.size(); i++) {
+    j = i - static_size;
+    global::texture_data[i + 1] = global::moving_texture_ids[j] + static_size;
+  }
+}
+
+
+inline void write_all() {
   //---------------------------------------------------------------------------------------------------------------
   //writes meshes to files that are within the "all_vertices", "all_uvs", "all_indicies" vectors
   //also writes a data file which contains the necessary details for reading the data effectively
@@ -71,6 +92,7 @@ void write_all() {
   fillData();
   fillm_Data();
   fillubo_data();
+  fillt_data();
 
   //-------------------------------------------------------------------------------------------------------------------------------------------------------
   //actually writing the data to file
@@ -85,20 +107,20 @@ void write_all() {
   //writing static meshes
   for (size_t k = 0; k < static_cast<size_t>(global::all_vertices.size()); k++){
     //for each mesh - write the components of the mesh to file
-    std::ofstream output_vertices(("../vertices_simple_static_" + std::to_string(k)).c_str(), std::ios::binary); output_vertices.write( (char *)&global::all_vertices[k][0], sizeof(float) * global::all_vertices[k].size() ); output_vertices.close();
-    std::ofstream output_uvs(("../uvs_simple_static_" + std::to_string(k)).c_str(), std::ios::binary); output_uvs.write( (char *)&global::all_uvs[k][0], sizeof(float) * global::all_uvs[k].size() ); output_uvs.close();
-    std::ofstream output_indices(("../indices_simple_static_" + std::to_string(k)).c_str(), std::ios::binary); output_indices.write( (char *)&global::all_indicies[k][0], sizeof(uint32_t) * global::all_indicies[k].size() ); output_indices.close();
+    std::ofstream output_vertices((file_location + "/vertices_simple_static_" + std::to_string(k) + file_extension).c_str(), std::ios::binary); output_vertices.write( (char *)&global::all_vertices[k][0], sizeof(float) * global::all_vertices[k].size() ); output_vertices.close();
+    std::ofstream output_uvs((file_location + "uvs_simple_static_" + std::to_string(k) + file_extension).c_str(), std::ios::binary); output_uvs.write( (char *)&global::all_uvs[k][0], sizeof(float) * global::all_uvs[k].size() ); output_uvs.close();
+    std::ofstream output_indices((file_location + "indices_simple_static_" + std::to_string(k) + file_extension).c_str(), std::ios::binary); output_indices.write( (char *)&global::all_indicies[k][0], sizeof(uint32_t) * global::all_indicies[k].size() ); output_indices.close();
   }
 
   //writing animated meshes
   for (size_t k = 0; k < static_cast<size_t>(global::all_m_vertices.size()); k++){
     //for each mesh write the components of the mesh to file
     //indices are in this loop because they do not change between frames
-    std::ofstream output_m_indices(("../indices_simple_moving_" + std::to_string(k)).c_str(), std::ios::binary); output_m_indices.write( (char *)&global::all_m_indices[k][0], sizeof(uint32_t) * global::all_m_indices[k].size() ); output_m_indices.close();
+    std::ofstream output_m_indices((file_location + "indices_simple_moving_" + std::to_string(k) + file_extension).c_str(), std::ios::binary); output_m_indices.write( (char *)&global::all_m_indices[k][0], sizeof(uint32_t) * global::all_m_indices[k].size() ); output_m_indices.close();
     for (size_t i = 0; i < static_cast<size_t>(global::all_m_vertices[k].size()); i++) {
       //for each frame, write out the components of the mesh that change between frames
-      std::ofstream output_m_vertices(("../vertices_simple_moving_" + std::to_string(k) + "_" + std::to_string(i)).c_str(), std::ios::binary); output_m_vertices.write( (char *)&global::all_m_vertices[k][i][0], sizeof(float) * global::all_m_vertices[k][i].size() ); output_m_vertices.close();
-      std::ofstream output_m_uvs(("../uvs_simple_moving_" + std::to_string(k) + "_" + std::to_string(i)).c_str(), std::ios::binary); output_m_uvs.write( (char *)&global::all_m_uvs[k][i][0], sizeof(float) * global::all_m_uvs[k][i].size() ); output_m_uvs.close();
+      std::ofstream output_m_vertices((file_location + "vertices_simple_moving_" + std::to_string(k) + "_" + std::to_string(i) + file_extension).c_str(), std::ios::binary); output_m_vertices.write( (char *)&global::all_m_vertices[k][i][0], sizeof(float) * global::all_m_vertices[k][i].size() ); output_m_vertices.close();
+      std::ofstream output_m_uvs((file_location + "uvs_simple_moving_" + std::to_string(k) + "_" + std::to_string(i) + file_extension).c_str(), std::ios::binary); output_m_uvs.write( (char *)&global::all_m_uvs[k][i][0], sizeof(float) * global::all_m_uvs[k][i].size() ); output_m_uvs.close();
     }
   }
 
@@ -107,16 +129,18 @@ void write_all() {
     //for each mesh
     for (size_t j = 0; j < static_cast<size_t>(global::all_translations[k].size()); j++) {
       //for each frame, write the necessary movement values
-      std::ofstream output_rotations(("../rotations_" + std::to_string(k) + "_" + std::to_string(j)).c_str(), std::ios::binary); output_rotations.write( (char *)&global::all_rotations[k][j][0], sizeof(float) * 4 ); output_rotations.close();
-      std::ofstream output_translations(("../translations_" + std::to_string(k) + "_" + std::to_string(j)).c_str(), std::ios::binary); output_translations.write( (char *)&global::all_translations[k][j][0], sizeof(float) * 3 ); output_translations.close();
+      std::ofstream output_rotations((file_location + "rotations_" + std::to_string(k) + "_" + std::to_string(j) + file_extension).c_str(), std::ios::binary); output_rotations.write( (char *)&global::all_rotations[k][j][0], sizeof(float) * 4 ); output_rotations.close();
+      std::ofstream output_translations((file_location + "translations_" + std::to_string(k) + "_" + std::to_string(j) + file_extension).c_str(), std::ios::binary); output_translations.write( (char *)&global::all_translations[k][j][0], sizeof(float) * 3 ); output_translations.close();
     }
   }
 
 
   //writing the data required for reading the meshes easily to file
   //the files must be call "data" and "m_data" so the vulkan program can find the file -- might be changed in the future
-  std::ofstream output_data(("../" + static_cast<std::string>("data")).c_str(), std::ios::binary); output_data.write( (char *)&global::data[0], sizeof(global::data[0]) * global::data.size() ); output_data.close();
-  std::ofstream output_m_data(("../" + static_cast<std::string>("m_data")).c_str(), std::ios::binary); output_m_data.write( (char *)&global::m_data[0], sizeof(global::m_data[0]) * global::m_data.size() ); output_m_data.close();
-  std::ofstream output_ubo_data("../ubo_data", std::ios::binary); output_ubo_data.write( (char *)&global::ubo_data[0], sizeof(global::ubo_data[0]) * global::ubo_data.size() ); output_ubo_data.close();
+  std::ofstream output_data((file_location + static_cast<std::string>("data") + file_extension).c_str(), std::ios::binary); output_data.write( (char *)&global::data[0], sizeof(global::data[0]) * global::data.size() ); output_data.close();
+  std::ofstream output_m_data((file_location + static_cast<std::string>("m_data") + file_extension).c_str(), std::ios::binary); output_m_data.write( (char *)&global::m_data[0], sizeof(global::m_data[0]) * global::m_data.size() ); output_m_data.close();
+  std::ofstream output_ubo_data(file_location + "ubo_data" + file_extension, std::ios::binary); output_ubo_data.write( (char *)&global::ubo_data[0], sizeof(global::ubo_data[0]) * global::ubo_data.size() ); output_ubo_data.close();
+  //writing texture data
+  std::ofstream output_textures(file_location + "t_data" + file_extension, std::ios::binary); output_textures.write((char*)&global::texture_data[0], sizeof(uint32_t) * global::texture_data.size()); output_textures.close();
 
 }

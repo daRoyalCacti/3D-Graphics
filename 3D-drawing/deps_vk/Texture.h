@@ -1,5 +1,4 @@
 #pragma once
-#include <stb_image.h>
 #include "vulkan/vulkan.h"
 #include <string>
 #include "Pixels.h"
@@ -14,7 +13,7 @@ public:
 		vkDestroyImageView(device, textureImageView, nullptr);
 	}
 
-	inline void create(std::string file, VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue) {
+	/*inline void create(std::string file, VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue) {
 		pixels imagePixels;
 
 		imagePixels.read_file(file.c_str());
@@ -23,7 +22,7 @@ public:
 		sb.create_buffer_image(imagePixels.texWidth, imagePixels.texHeight, device, physicalDevice, &textureImage, &textureImageMemory, commandPool, graphicsQueue, imagePixels.pixels);
 
 		sb.cleanup(device);
-	}
+	}*/
 
 	inline void create(pixels imagePixels, VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue) {
 
