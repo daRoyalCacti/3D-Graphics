@@ -185,7 +185,7 @@ void transitionImageLayout(VkDevice device, VkCommandPool commandPool, VkQueue g
     endSingleTimeCommands(commandPool,  device, graphicsQueue, commandBuffer);
 }
 
-VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+__attribute__((pure)) VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;

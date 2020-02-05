@@ -28,10 +28,16 @@
 
 #include <future>		//the return type of std::async (from <thread>)
 
-//for setting ubo.perspective using glm::perspective
-const float fov = 45.0f;
-const float near_plane = 0.1f;
-const float far_plane = 100.0f;
+namespace vk_settings {
+	//for setting ubo.perspective using glm::perspective
+	const float fov = 45.0f;
+	const float near_plane = 0.1f;
+	const float far_plane = 100.0f;
+
+	const VkFormat swapChainFormat = VK_FORMAT_B8G8R8A8_UNORM;
+	const VkColorSpaceKHR swapChainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+	const VkBool32 swapChainClipped = VK_TRUE;
+}
 
 playerCamera camera;	//referencing the extern variable defined in the main header
 
@@ -450,7 +456,7 @@ void vulkanApp::updateUniformBuffers(uint32_t currentImage) {
 #endif
 #endif
 
-		staticMeshes[i].ub.ubo.proj = glm::perspective(glm::radians(fov), swapChainExtent.width / (float)swapChainExtent.height, near_plane, far_plane);
+		staticMeshes[i].ub.ubo.proj = glm::perspective(glm::radians(vk_settings::fov), swapChainExtent.width / (float)swapChainExtent.height, vk_settings::near_plane, vk_settings::far_plane);
 		staticMeshes[i].ubo_update(currentImage, device);
 	}
 
@@ -475,7 +481,7 @@ void vulkanApp::updateUniformBuffers(uint32_t currentImage) {
 #endif
 #endif
 
-			movingMeshes[j].Mesh.ub.ubo.proj = glm::perspective(glm::radians(fov), swapChainExtent.width / (float)swapChainExtent.height, near_plane, far_plane);
+			movingMeshes[j].Mesh.ub.ubo.proj = glm::perspective(glm::radians(vk_settings::fov), swapChainExtent.width / (float)swapChainExtent.height, vk_settings::near_plane, vk_settings::far_plane);
 			movingMeshes[j].Mesh.ubo_update(currentImage, device);
 		}
 
@@ -619,11 +625,21 @@ void vulkanApp::setupDebugMessenger() {
 }
 
 void vulkanApp::createSurface() {
+	//====================================================================================================================================================================================
+	//vulkan cannot be directly interfacted with the window system on its own.
+	//To make a connection between Vulkan and the window system a WSI
+	// - the first one is VK_KHR_surface (enabled in main header) which exposes a VKsurface object
+	//the surface is used to present rendered images to
+	//---------------------------------------------------------------------------------------------------
+	//the surface used here will be taken directly from glfw
+	//====================================================================================================================================================================================
 	#ifdef detailed_timing
 		auto start = std::chrono::steady_clock::now();
 	#endif
 
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+		//creating the surface using glfw -- can be done in raw vulkan but doesn't make much sense because glfw is being used
+		//the surface creation handles different platforms on its own
 		throw std::runtime_error("failed to create window surface!");
 	}
 
@@ -643,6 +659,7 @@ void vulkanApp::pickPhysicalDevice() {
 
 	if (deviceCount == 0) {		//a device that can run vulkan is of course needed
 		throw std::runtime_error("failed to find GPUs with Vulkan support!");
+		//COME BACK TO LATER -- use another graphics api
 	}
 
 	std::vector<VkPhysicalDevice> devices(deviceCount);	//a vector of all the devices
@@ -803,21 +820,33 @@ void vulkanApp::createLogicalDevice() {
 }
 
 void vulkanApp::createSwapChain() {
+	//========================================================================================================================================================================
+	//vulkan has no default framebuffer so it requires and infastructe that will own the buffers and render to them before said buffers get pushed to the screen
+	//this is known as the swap chain
+	//the swap chain is a queue of images that are waiting to be presented to the screen
+	//------------------------------------------------------------------------------------------------------------------------------------------------------------
+	//this application will acquire and image to draw to, then return it to the queue when it has been drawn to
+	//========================================================================================================================================================================
 	#ifdef detailed_timing
 		auto start = std::chrono::steady_clock::now();
 	#endif
 
-	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice); //showish
 
-	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-	VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice); //all possible formats and color space pairs, and the presentatation modes available on the phyiscal device
+																																										//SwapChainSupportDetails is defined in the main header
+
+	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);	//choosing the surface mode based on settings in the vk_settings namespace
+	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);	//choosing the present mode based on whether vsync is defined or not
+	VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);									//setting the extent to the size of the window (or some other values in special cases)
 
 
-	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;	//how many images does the swap chain have
+																																					//recommended to request 1 more than the minimum
+	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {	//checking to make sure not ove rthe maximum and not less than 0 (0 means no max)
 		imageCount = swapChainSupport.capabilities.maxImageCount;
 	}
+
+	//filling the struct with the variables defined above
 	VkSwapchainCreateInfoKHR createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createInfo.surface = surface;
@@ -826,35 +855,43 @@ void vulkanApp::createSwapChain() {
 	createInfo.imageFormat = surfaceFormat.format;
 	createInfo.imageColorSpace = surfaceFormat.colorSpace;
 	createInfo.imageExtent = extent;
-	createInfo.imageArrayLayers = 1;
-	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	createInfo.imageArrayLayers = 1;	//the amount of layers an image consists of -- 1 unless stereoscopic 3D application
+	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;	//operations the images in the swap chain are used for
+																																//here they are directly rendered to
+																																//it is possible to to render to seperate images to perform post-processing and similar
+																																// - VK_IMAGE_USAGE_TRANSFER_DST_BIT would then be used and memory operations used to transfer to the swap chain
 
-	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);	//returning the index of the graphics and present families
 	uint32_t queueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
-	if (indices.graphicsFamily != indices.presentFamily) {
-		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+	if (indices.graphicsFamily != indices.presentFamily) {	//if they are 2 different queues
+		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;	//to avoid having to do ownership transferrs, images are sharded across multiple queue families -- NEED TO BE DONE
 		createInfo.queueFamilyIndexCount = 2;
 		createInfo.pQueueFamilyIndices = queueFamilyIndices;
 	}
-	else {
-		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	else {	//if they are the same queue
+		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;	//image is owned by one queue -- only is 1 queue so this is a good option
+																															//this also offers the best performance
 	}
 
-	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;	//to specify any sort of rotations or flips
+																																						//because that is not needed the current transform is used
+																																						//if it were to be used, supportedTransforms would have to be checked in capabilities
 
+	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;			//if the alpha channel should be used for blending with other windows in the window system
+																																			//almost always should be opaque
 
 	createInfo.presentMode = presentMode;
-	createInfo.clipped = VK_TRUE;
+	createInfo.clipped = vk_settings::swapChainClipped;		//(if true) don't care about pixels that are obscured by another window infront or similar
 
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) { //slow
+	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) { //creating the swap chain
 		throw std::runtime_error("failed to create swap chain!");
 	}
 
 
+	//filling 'swapChainImages' with the images of the swapChain
 	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
 	swapChainImages.resize(imageCount);
 	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
@@ -869,23 +906,33 @@ void vulkanApp::createSwapChain() {
 }
 
 __attribute__((pure)) VkSurfaceFormatKHR vulkanApp::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
+	//chosing a swapchain with desired properties
+
+	//the VkSurfaceFormatKHR has 2 members - format and colorspce, so checking if those match what is desired
 	for (const auto& availableFormat : availableFormats) {
-		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+		if (availableFormat.format == vk_settings::swapChainFormat && availableFormat.colorSpace == vk_settings::swapChainColorSpace) {
 			return availableFormat;
+
 		}
 	}
 
-	return availableFormats[0];
+	return availableFormats[0];	//return the first one if non have the desired features -- should do more here because this is not great -- should rank based on how good they are and return the best one
 }
 
 __attribute__((pure)) VkPresentModeKHR vulkanApp::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
-	for (const auto& availablePresentMode : availablePresentModes) {
+	//present mode describes the conditions for showing images to screen
+	//there are 4 possiblites : VK_PRESENT_MODE_IMMEDIATE_KHR (straight from application to screen)
+	//												:	VK_PRESENT_MODE_FIFO_KHR (vsync - the program has to wait if the queue is full)
+	//												:	VK_PRESENT_MODE_FIFO_RELAXED_KHR (same as above but if the queue is empty display the last image rather than waiting)
+	//												:	VK_PRESENT_MODE_MAILBOX_KHR (vsync - the program replaces old images if queue is full)
+
+	for (const auto& availablePresentMode : availablePresentModes) {	//looking through all modes to see which one matches what is desired
 		#ifdef vsync
-		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
+		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) { 	//used because it allows for triple buffering - is what will end up looking the best
 			return availablePresentMode;
 		}
 		#else
-		if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+		if (availablePresentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {	//used becasue it is the only one that does not sync with the screen - used main to test performance
 			return availablePresentMode;
 		}
 		#endif
@@ -895,15 +942,19 @@ __attribute__((pure)) VkPresentModeKHR vulkanApp::chooseSwapPresentMode(const st
 }
 
 VkExtent2D vulkanApp::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-	if (capabilities.currentExtent.width != UINT32_MAX) {
-		return capabilities.currentExtent;
+	//the swap extent is the resolution of the swap chain images -- almost always the resolution of the window being drawn to
+	if (capabilities.currentExtent.width != UINT32_MAX) {	//some window managers allow for the extent to differ from the window - dealing with this special case
+		return capabilities.currentExtent;	//no idea how this works
 	}
 	else {
 		int width, height;
-		glfwGetFramebufferSize(window, &width, &height);
+		glfwGetFramebufferSize(window, &width, &height);	//grabbing the size of the window to set the extent to
+																											//this is initally the values of WIDTH, and HEIGHT defined in the main header
 
-		VkExtent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+		VkExtent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };	//filling the necessary data type with the data
 
+		//clamping the values between allowed max and min
+		// - likely a better way of doing this
 		actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
 		actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
 
@@ -913,9 +964,9 @@ VkExtent2D vulkanApp::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilit
 }
 
 SwapChainSupportDetails vulkanApp::querySwapChainSupport(VkPhysicalDevice p_device) {
-	//SwapChainSupportDetails is defined in the main header
 	//this function queries the formats and color space pairs, and the presentatation modes available for the surface supplied by GLFW
 
+	//SwapChainSupportDetails is defined in the main header
 	SwapChainSupportDetails details;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(p_device, surface, &details.capabilities); //queries the basic capabilities of the surface needed to create the swapchain at all
 
@@ -942,15 +993,16 @@ SwapChainSupportDetails vulkanApp::querySwapChainSupport(VkPhysicalDevice p_devi
 }
 
 void vulkanApp::createImageViews() {
+	//an image view describes how to access an image and which part of the image to access
 	#ifdef detailed_timing
 		auto start = std::chrono::steady_clock::now();
 	#endif
 
-	swapChainImageViews.resize(swapChainImages.size());
+	swapChainImageViews.resize(swapChainImages.size());	//each image has its own view by implementation
 
-	//to fast to parallise \/
+	//to fast to parallise -- just filling structs \/
 	for (size_t i = 0; i < swapChainImages.size(); i++) {
-		swapChainImageViews[i] = createImageView(device, swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		swapChainImageViews[i] = createImageView(device, swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);	//create image view is defined in "vulkan_help"
 	}
 
 	#ifdef detailed_timing

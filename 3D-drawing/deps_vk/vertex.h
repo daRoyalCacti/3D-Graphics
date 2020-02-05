@@ -3,8 +3,6 @@
 #include <glm/glm.hpp>
 #include <array>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/hash.hpp>
 
 struct Vertex {
 	glm::vec3 pos;
@@ -40,11 +38,3 @@ struct Vertex {
 
 
 };
-
-namespace std {
-	template<> struct hash<Vertex> {
-			size_t operator()(Vertex const& vertex) const {
-					return ((hash<glm::vec3>()(vertex.pos)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
-			}
-	};
-}
