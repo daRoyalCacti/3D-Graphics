@@ -10,25 +10,29 @@ const std::string file_location = "/home/george/Documents/Projects/Major-3D/3D-d
 
 inline void fillData() {
   //helper function to fill the required array for the data required for reading the static meshes easily
-  global::data.resize(global::all_vertices.size() * 2 + 1);
-  global::data[0] = global::all_vertices.size();
+
+  global::data.resize(global::all_vertex.size() * 2 + 1);
+  global::data[0] = global::all_vertex.size();
   int counter = 0;
-  for (size_t i = 0; i < static_cast<size_t>(global::all_vertices.size() * 2); i+=2, counter++) {
-    global::data[i + 1] = global::all_vertices[counter].size() / 3; //number of vertices in mesh i
+  for (size_t i = 0; i < static_cast<size_t>(global::all_vertex.size() * 2); i+=2, counter++) {
+    global::data[i + 1] = global::all_vertex[counter].size(); //number of vertices in mesh i
     global::data[i + 2] = global::all_indicies[counter].size(); //number of indicies in mesh i
   }
+
 }
 
 inline void fillm_Data() {
   //helper function to fill the required array for the data required for reading the moving meshes easily
-  global::m_data.resize(global::all_m_vertices.size() * 3 + 1); //vertices, indices, and uvs + total number of meshes
-  global::m_data[0] = global::all_m_vertices.size();
+
+  global::m_data.resize(global::all_m_vertex.size() * 3 + 1); //vertices, indices, and uvs + total number of meshes
+  global::m_data[0] = global::all_m_vertex.size();
   int counter = 0;
-  for (size_t i = 0; i < static_cast<size_t>(global::all_m_vertices.size() * 3); i+=3, counter++) {
-    global::m_data[i + 1] = global::all_m_vertices[counter][0].size(); //number of vertices for mesh i
+  for (size_t i = 0; i < static_cast<size_t>(global::all_m_vertex.size() * 3); i+=3, counter++) {
+    global::m_data[i + 1] = global::all_m_vertex[counter][0].size(); //number of vertices for mesh i
     global::m_data[i + 2] = global::all_m_indices[counter].size(); //number of indices for mesh i
-    global::m_data[i + 3] = global::all_m_vertices[counter].size(); //number of frames for mesh i
+    global::m_data[i + 3] = global::all_m_vertex[counter].size(); //number of frames for mesh i
   }
+
 }
 
 inline void fillubo_data() {
@@ -65,27 +69,8 @@ inline void write_all() {
   //these arrays need to be filled prior to the call of this function or else the results will be undefined
   //---------------------------------------------------------------------------------------------------------------
 
-  //static mesh error checking
-  if (global::all_vertices.size() != global::all_uvs.size() || global::all_uvs.size() != global::all_indicies.size() || global::all_vertices.size() != global::all_indicies.size() ) {
-    std::cerr << "Inequal number of vertices, indices and uvs for static meshes" << std::endl;
-    std::cout << "Vertices: " << global::all_vertices.size() << "\tIndices: " << global::all_indicies.size() << "\tUvs: " << global::all_uvs.size() << std::endl;
-  }
 
-  //moving mesh error checking
-  if (global::all_m_vertices.size() != global::all_m_uvs.size() || global::all_m_uvs.size() != global::all_m_indices.size() || global::all_m_vertices.size() != global::all_m_indices.size() ) {
-    //if each mesh has a set of vertices, indices, and uvs
-    std::cerr << "Inequal number of vertices, indices and uvs for moving meshes" << std::endl;
-    std::cout << "Vertices: " << global::all_m_vertices.size() << "\tIndices: " << global::all_m_indices.size() << "\tUvs: " << global::all_m_uvs.size() << std::endl;
-  }
-  for (size_t i = 0; i < static_cast<size_t>(global::all_m_vertices.size()); i++) {
-    if (global::all_m_vertices[i].size() != global::all_m_uvs[i].size()) { //no need to check indices because that is constant between frames
-      //if each frame has vertices and uvs
-      std::cerr << "Inequal number of vertices and uvs for moving meshes for frame " << i << std::endl;
-      std::cout << "Vertices: " << global::all_m_vertices[i].size() << "\tUvs: " << global::all_m_uvs[i].size() << std::endl;
-    }
-  }
-
-  //!!ubo error checking
+  //ERROR CHECKING!!!!!!!!!!!!!!!!!!!!!!!
 
   //these functions write the data necessary for reading the data back easily
   // - all the data writen is taken from global vectors to make the mesh creation process seperate from the writing process
@@ -105,22 +90,22 @@ inline void write_all() {
   //-------------------------------------------------------------------------------------------------------------------------------------------------------
 
   //writing static meshes
-  for (size_t k = 0; k < static_cast<size_t>(global::all_vertices.size()); k++){
+  for (size_t k = 0; k < static_cast<size_t>(global::all_vertex.size()); k++){
     //for each mesh - write the components of the mesh to file
-    std::ofstream output_vertices((file_location + "/vertices_simple_static_" + std::to_string(k) + file_extension).c_str(), std::ios::binary); output_vertices.write( (char *)&global::all_vertices[k][0], sizeof(float) * global::all_vertices[k].size() ); output_vertices.close();
-    std::ofstream output_uvs((file_location + "uvs_simple_static_" + std::to_string(k) + file_extension).c_str(), std::ios::binary); output_uvs.write( (char *)&global::all_uvs[k][0], sizeof(float) * global::all_uvs[k].size() ); output_uvs.close();
+    std::ofstream output_vertex(file_location + "vertex_simple_static_" + std::to_string(k) + file_extension, std::ios::binary); output_vertex.write((char*)&global::all_vertex[k][0], sizeof(Vertex) * global::all_vertex[k].size()); output_vertex.close();
+
     std::ofstream output_indices((file_location + "indices_simple_static_" + std::to_string(k) + file_extension).c_str(), std::ios::binary); output_indices.write( (char *)&global::all_indicies[k][0], sizeof(uint32_t) * global::all_indicies[k].size() ); output_indices.close();
   }
 
   //writing animated meshes
-  for (size_t k = 0; k < static_cast<size_t>(global::all_m_vertices.size()); k++){
+  for (size_t k = 0; k < static_cast<size_t>(global::all_m_vertex.size()); k++){
     //for each mesh write the components of the mesh to file
     //indices are in this loop because they do not change between frames
     std::ofstream output_m_indices((file_location + "indices_simple_moving_" + std::to_string(k) + file_extension).c_str(), std::ios::binary); output_m_indices.write( (char *)&global::all_m_indices[k][0], sizeof(uint32_t) * global::all_m_indices[k].size() ); output_m_indices.close();
-    for (size_t i = 0; i < static_cast<size_t>(global::all_m_vertices[k].size()); i++) {
+
+    for (size_t i = 0; i < static_cast<size_t>(global::all_m_vertex[k].size()); i++) {
       //for each frame, write out the components of the mesh that change between frames
-      std::ofstream output_m_vertices((file_location + "vertices_simple_moving_" + std::to_string(k) + "_" + std::to_string(i) + file_extension).c_str(), std::ios::binary); output_m_vertices.write( (char *)&global::all_m_vertices[k][i][0], sizeof(float) * global::all_m_vertices[k][i].size() ); output_m_vertices.close();
-      std::ofstream output_m_uvs((file_location + "uvs_simple_moving_" + std::to_string(k) + "_" + std::to_string(i) + file_extension).c_str(), std::ios::binary); output_m_uvs.write( (char *)&global::all_m_uvs[k][i][0], sizeof(float) * global::all_m_uvs[k][i].size() ); output_m_uvs.close();
+      std::ofstream output_m_vertex(file_location + "vertex_simple_moving_" + std::to_string(k) + "_" + std::to_string(i) + file_extension, std::ios::binary); output_m_vertex.write( (char *)&global::all_m_vertex[k][i][0], sizeof(Vertex) * global::all_m_vertex[k][i].size() ); output_m_vertex.close();
     }
   }
 

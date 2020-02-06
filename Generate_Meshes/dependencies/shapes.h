@@ -5,7 +5,7 @@
 
 namespace shapes {
   namespace cube {
-    std::vector<float> vertices() {
+    __attribute__((const)) inline std::vector<float> vertices() {
       return {
         -0.5f, -0.5f, -0.5f, //0  -  0
          0.5f, -0.5f, -0.5f, //1  -  1
@@ -28,7 +28,7 @@ namespace shapes {
       };
     }
 
-    std::vector<float> uvs() {
+    __attribute__((const)) inline std::vector<float> uvs() {
       return {
         0.25f, 0.66f, //0  -  0
         0.5f, 0.66f, //1  -  1
@@ -51,7 +51,7 @@ namespace shapes {
       };
     }
 
-    std::vector<uint32_t> indices() {
+    __attribute__((const)) inline std::vector<uint32_t> indices() {
       return {
         0,  1, 2,  2,  3, 0,  //bottom
         0,  4, 1,  1,  4, 7,  //front
@@ -65,7 +65,7 @@ namespace shapes {
   } //end cube
 
   namespace sphere {
-    std::vector<float> vertices(unsigned rows = 10) {
+    __attribute__((const)) inline std::vector<float> vertices(unsigned rows = 10) {
       std::vector<float> vertex;
       vertex.resize(rows*rows * 3);
 
@@ -81,7 +81,7 @@ namespace shapes {
       return vertex;
     }
 
-    std::vector<uint32_t> indices(unsigned rows = 10) {
+    __attribute__((const)) inline std::vector<uint32_t> indices(unsigned rows = 10) {
       std::vector<uint32_t> index;
       index.resize((rows - 1) * (rows) * 6);
 
@@ -101,7 +101,7 @@ namespace shapes {
       return index;
     }
 
-    std::vector<float> uvs(unsigned rows = 10) {
+    __attribute__((const)) inline std::vector<float> uvs(unsigned rows = 10) {
       std::vector<float> uv;
       uv.resize(rows * rows * 2);
 

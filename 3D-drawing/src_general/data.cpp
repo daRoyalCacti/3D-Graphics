@@ -2,7 +2,7 @@
 #include "global.h"
 
 #include <chrono>
-#include "global.h"
+#include "vertex.h"
 
 #include <string>
 #include <cstring>
@@ -12,6 +12,7 @@
 #include <mutex>
 
 #include <glm/gtc/matrix_transform.hpp>
+
 
 namespace files {
   const std::string file_extension = ".bin";
@@ -75,53 +76,26 @@ namespace files {
 
     int no_mesh_vertices, no_mesh_indices; //variables used to create appropriately sized arrays and required to read the data from the binary files effectively
 
-    float* reading_vertices, *reading_uvs; //variables for the data from the files to read direcly into -- will be converted to a more useful form later
   	for (int k = 0; k < static_cast<int>(no_mesh); k++) {
   		//variables describing the data
   		no_mesh_vertices = *data_ptr++;
   		no_mesh_indices = *data_ptr++;
   		//varibles for the data
-  		reading_vertices = new float[no_mesh_vertices * 3];
-  		reading_uvs = new float[no_mesh_vertices * 2];
+
       Indicies[k].resize(no_mesh_indices); //no reading variable required because the data is already in the correct form
 
-  		//reading vertices
-  		std::ifstream vertices_file(static_cast<std::string>("./Meshes/vertices_simple_static_") + std::to_string(k) + file_extension, std::ios::binary);
-  		if (!vertices_file.is_open()) {throw std::runtime_error(static_cast<std::string>("failed to open vertex file ") + std::to_string(k) + file_extension);} //error checking
-  		vertices_file.read((char*)&reading_vertices[0], no_mesh_vertices * 3 * sizeof(float)); vertices_file.close();
 
-  		//reading texture coordinates
-  		std::ifstream uvs_file(static_cast<std::string>("./Meshes/uvs_simple_static_") + std::to_string(k) + file_extension, std::ios::binary);
-  		if (!uvs_file.is_open()) {throw std::runtime_error(static_cast<std::string>("failed to open uv file ") + std::to_string(k) + file_extension);} //error checking
-  		uvs_file.read((char*)&reading_uvs[0], no_mesh_vertices * 2 * sizeof(float) ); uvs_file.close();
+      Vertices[k].resize(no_mesh_vertices);
+      std::ifstream vertices_file(static_cast<std::string>("./Meshes/vertex_simple_static_") + std::to_string(k) + file_extension, std::ios::binary);
+  		if (!vertices_file.is_open()) {throw std::runtime_error(static_cast<std::string>("failed to open vertex file ") + std::to_string(k) + file_extension);} //error checking
+  		vertices_file.read((char*)&Vertices[k][0], no_mesh_vertices * sizeof(Vertex)); vertices_file.close();
 
   		//reading indices
   		std::ifstream indices_file(static_cast<std::string>("./Meshes/indices_simple_static_") + std::to_string(k) + file_extension, std::ios::binary);
   		if (!indices_file.is_open()) {throw std::runtime_error(static_cast<std::string>("failed to open index file ") + std::to_string(k) + file_extension);} //error checking
   		indices_file.read((char*)&Indicies[k][0], sizeof(Indicies[k][0]) * Indicies[k].size() ); indices_file.close();
-
-      Vertices[k].resize(no_mesh_vertices *  5); //need to set number of vertices for the given mesh
-
-    //parallelizing the loop may be unnecessary
-    #pragma omp parallel for
-  		for (int i = 0; i < no_mesh_vertices; i++) {
-        int counter_verticies = i * 3; //required for parallizing the loop
-        int counter_uvs = i * 2;
-
-        //glm does funny things if it is not specified this way
-        Vertices[k][i].pos.x = reading_vertices[counter_verticies];
-        Vertices[k][i].pos.y = reading_vertices[counter_verticies + 1]; //shouldn't use ++ because loop is parallized and make it atomic wouldn't make much sense
-        Vertices[k][i].pos.z = reading_vertices[counter_verticies + 2];
-
-        Vertices[k][i].texCoord.x = reading_uvs[counter_uvs];
-        Vertices[k][i].texCoord.y = reading_uvs[counter_uvs + 1];
-  		}
-
-
-      delete [] reading_vertices;
-      delete [] reading_uvs;
-
   	}
+
 
     delete [] reading_data;
 
@@ -195,41 +169,17 @@ namespace files {
   		if (!indices_file.is_open()) {throw std::runtime_error(static_cast<std::string>("failed to open index file ") + std::to_string(i) + file_extension);}
   		indices_file.read((char*)&m_Indicies[i][0], sizeof(m_Indicies[i][0]) * m_Indicies[i].size() ); indices_file.close();
 
-
-      float* reading_vertices = new float[no_mesh_vertices[i] * 3]; //required to read in data from file -- is then converted to move useful form
-      float* reading_uvs = new float[no_mesh_vertices[i] * 2];
-
       for (unsigned j = 0; j < frames_for_mesh[i]; j++) {
-        //reading vertices -- the vertices change every frame so they have to read for every frame of animation
-        std::ifstream vertices_file(static_cast<std::string>("./Meshes/vertices_simple_moving_") + std::to_string(i) + "_" + std::to_string(j) + file_extension, std::ios::binary);
-        if (!vertices_file.is_open()) {throw std::runtime_error(static_cast<std::string>("failed to open vertex file ") + std::to_string(i) + " for frame " + std::to_string(j) + file_extension);}
-        vertices_file.read((char*)&reading_vertices[0], no_mesh_vertices[i] * 3 * sizeof(float)); vertices_file.close();
-
-
-        //reading texture coordinates
-        std::ifstream uvs_file(static_cast<std::string>("./Meshes/uvs_simple_moving_") + std::to_string(i) + "_" + std::to_string(j) + file_extension, std::ios::binary);
-        if (!uvs_file.is_open()) {throw std::runtime_error(static_cast<std::string>("failed to open uv file ") + std::to_string(i) + " for frame " + std::to_string(j) + file_extension);}
-        uvs_file.read((char*)&reading_uvs[0], no_mesh_vertices[i] * 2 * sizeof(float) ); uvs_file.close();
-
         m_Vertices[i][j].resize(no_mesh_vertices[i]);
 
-      #pragma omp parallel for
-        for (unsigned k = 0; k < no_mesh_vertices[i]; k++) {
-          int counter_uvs = k * 2; //required to make loop run in parallel
-          int counter_verticies = k * 3;
 
-          //glm does funny things if not specified this way
-          m_Vertices[i][j][k].pos.x = reading_vertices[counter_verticies];
-          m_Vertices[i][j][k].pos.y = reading_vertices[counter_verticies + 1];
-          m_Vertices[i][j][k].pos.z = reading_vertices[counter_verticies + 2];
+        std::ifstream vertices_file(static_cast<std::string>("./Meshes/vertex_simple_moving_") + std::to_string(i) + "_" + std::to_string(j) + file_extension, std::ios::binary);
+        if (!vertices_file.is_open()) {throw std::runtime_error(static_cast<std::string>("failed to open vertex file ") + std::to_string(i) + " for frame " + std::to_string(j) + file_extension);}
+        vertices_file.read((char*)&m_Vertices[i][j][0], no_mesh_vertices[i] * 3 * sizeof(Vertex)); vertices_file.close();
 
-          m_Vertices[i][j][k].texCoord.x = reading_uvs[counter_uvs];
-          m_Vertices[i][j][k].texCoord.y = reading_uvs[counter_uvs + 1];
-        }
 
       }
-      delete [] reading_vertices;
-      delete [] reading_uvs;
+
     }
 
     delete [] no_mesh_vertices;

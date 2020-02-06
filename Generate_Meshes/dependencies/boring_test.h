@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include "helper.h"
+#include "global.h"
 
 namespace boring {
   //plane thingo
@@ -142,8 +143,9 @@ namespace boring {
   float translations_5[3] = {0.0f, 2.0f, 4.0f};
 
 
-  void create_static_meshes() {
-    new_static_vertices(Vertices);
+  inline void create_static_meshes() {
+    //outdated -- will not work
+    /*new_static_vertices(Vertices);
     new_static_indices(indices);
     new_static_uvs(UVs);
 
@@ -153,23 +155,20 @@ namespace boring {
 
     new_static_vertices(Vertices3);
     new_static_indices(indices3);
-    new_static_uvs(Uvs3);
+    new_static_uvs(Uvs3);*/
   }
 
-  void create_moving_meshes() {
+  inline void create_moving_meshes() {
     uint32_t id;
     //mesh 1
-    id = new_moving_vertices();
-    new_moving_vertices_frame(id, m_Vertices1_0);
-    new_moving_vertices_frame(id, m_Vertices1_1);
+    id = new_moving_vertex();
+    new_moving_vertex_frame(id, m_Vertices1_0, m_Uvs1_0);
+    new_moving_vertex_frame(id, m_Vertices1_1, m_Uvs1_0);
     new_moving_indices(m_indices1);
     moving_mesh_has_texture(id, id);
-    id = new_moving_uvs();
-    new_moving_uvs_frame(id, m_Uvs1_0);
-    new_moving_uvs_frame(id, m_Uvs1_0);
   }
 
-  void create_movement() {
+  inline void create_movement() {
     int id;
     id = new_rotation();
     new_rotation_frame(id, rotations_1);

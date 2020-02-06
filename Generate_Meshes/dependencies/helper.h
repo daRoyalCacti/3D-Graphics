@@ -1,53 +1,52 @@
 #pragma once
 #include <vector>
 #include "global.h"
+#include "vertex.h"
 
-inline uint32_t new_static_vertices(std::vector<float> vertices) {
-  global::all_vertices.push_back(vertices);
-  return global::all_vertices.size() - 1; //id
+//shouldn't be inline -- need to fix
+inline std::vector<Vertex> to_vertex(std::vector<float> v, std::vector<float> u) {
+  std::vector<Vertex> vertices;
+  vertices.resize(v.size() / 3);
+  unsigned j = 0, k = 0;
+  for (unsigned i = 0; i < v.size()/3; i++, j+=3, k+=2) {
+    vertices[i] = {{v[j], v[j + 1], v[j + 2]}, {u[k], u[k + 1]}};
+  }
+
+  return vertices;
 }
+
+
+inline uint32_t new_static_vertex(std::vector<float> vertices, std::vector<float> uvs) {
+  global::all_vertex.push_back(to_vertex(vertices, uvs));
+  return global::all_vertex.size() - 1;
+}
+
 
 inline uint32_t new_static_indices(std::vector<uint32_t> indices) {
   global::all_indicies.push_back(indices);
   return global::all_indicies.size() - 1; //id
 }
 
-inline uint32_t new_static_uvs(std::vector<float> uvs) {
-  global::all_uvs.push_back(uvs);
-  return global::all_uvs.size() - 1;
+
+//vector already filled with all frames version needs to be added!!!
+
+inline uint32_t new_moving_vertex() {
+  global::all_m_vertex.resize(global::all_m_vertex.size() + 1);
+  return global::all_m_vertex.size() - 1;
 }
 
-
-inline uint32_t new_moving_vertices(std::vector<std::vector<float>> all_frames) {
-  global::all_m_vertices.push_back(all_frames);
-  return global::all_m_vertices.size();
-}
-inline uint32_t new_moving_vertices() {
-  global::all_m_vertices.resize(global::all_m_vertices.size() + 1);
-  return global::all_m_vertices.size() - 1;
+inline void new_moving_vertex_frame(uint32_t mesh_id, std::vector<float> vertices, std::vector<float> uvs) {
+  global::all_m_vertex[mesh_id].push_back(to_vertex(vertices, uvs));
 }
 
-inline void new_moving_vertices_frame(uint32_t mesh_id, std::vector<float> vertices) {
-  global::all_m_vertices[mesh_id].push_back(vertices);
-}
 
 inline uint32_t new_moving_indices(std::vector<uint32_t> indices) {
   global::all_m_indices.push_back(indices);
   return global::all_m_indices.size() - 1;
 }
 
-inline uint32_t new_moving_uvs(std::vector<std::vector<float>> all_uvs) {
-  global::all_m_uvs.push_back(all_uvs);
-  return global::all_m_uvs.size() - 1;
-}
-inline uint32_t new_moving_uvs() {
-  global::all_m_uvs.resize(global::all_m_uvs.size() + 1);
-  return global::all_m_uvs.size() - 1;
-}
 
-inline void new_moving_uvs_frame(uint32_t mesh_id, std::vector<float> uvs) {
-  global::all_m_uvs[mesh_id].push_back(uvs);
-}
+
 
 inline uint32_t new_rotation() {
   global::all_rotations.resize(global::all_rotations.size() + 1);

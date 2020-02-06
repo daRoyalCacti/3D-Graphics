@@ -11,11 +11,11 @@ int main() {
   const int sphere_points = 20;
   auto start0 = std::chrono::high_resolution_clock::now();
   uint32_t id;
-  id = new_static_vertices(shapes::cube::vertices()); new_static_indices(shapes::cube::indices()); new_static_uvs(shapes::cube::uvs()); static_mesh_has_texture(id, id);
-  id = new_static_vertices(shapes::sphere::vertices(sphere_points)); new_static_indices(shapes::sphere::indices(sphere_points)); new_static_uvs(shapes::sphere::uvs(sphere_points)); static_mesh_has_texture(id, id);
-  id = new_static_vertices(shapes::cube::vertices()); new_static_indices(shapes::cube::indices()); new_static_uvs(shapes::cube::uvs()); static_mesh_has_texture(id, id);
-  id = new_static_vertices(shapes::sphere::vertices(5)); new_static_indices(shapes::sphere::indices(5)); new_static_uvs(shapes::sphere::uvs(5)); static_mesh_has_texture(id, id - 1);
 
+  id = new_static_vertex(shapes::cube::vertices(), shapes::cube::uvs()); new_static_indices(shapes::cube::indices()); static_mesh_has_texture(id, id);
+  id = new_static_vertex(shapes::sphere::vertices(sphere_points), shapes::sphere::uvs(sphere_points)); new_static_indices(shapes::sphere::indices(sphere_points)); static_mesh_has_texture(id, id);
+  id = new_static_vertex(shapes::cube::vertices(), shapes::cube::uvs()); new_static_indices(shapes::cube::indices()); static_mesh_has_texture(id, id);
+  id = new_static_vertex(shapes::sphere::vertices(5), shapes::sphere::uvs(5)); new_static_indices(shapes::sphere::indices(5)); static_mesh_has_texture(id, id - 1);
 
   boring::create_moving_meshes();
   boring::create_movement();
