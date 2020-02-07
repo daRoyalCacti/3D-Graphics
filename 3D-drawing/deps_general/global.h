@@ -5,7 +5,7 @@
 
 #define player_camera
 //#define vsync		//is currently broken
-
+//#define frame_init_increase
 
 
 
@@ -28,3 +28,10 @@
 #ifdef precalculated_player_camera
 	//#define mod_frame //no longer used -- relevant code deleted
 #endif
+
+#include "player_camera.h"
+namespace global {
+	extern playerCamera camera;
+	extern bool increase_frames;
+	extern uint64_t framecounter;	//will essentially never overflow - 5.6*10^6 millenia at 60fps
+}

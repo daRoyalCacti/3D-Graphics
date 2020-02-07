@@ -50,7 +50,7 @@ struct SwapChainSupportDetails {
 };
 
 
-extern playerCamera camera;
+
 
 class vulkanApp {
 public:
@@ -68,7 +68,7 @@ public:
 	void drawFrame();
 
 
-	int framecounter = 0;
+	//uint64_t framecounter = 0;	//will essentially never overflow at 60fps (millenia)
 
 	vulkanApp() {
 
@@ -78,13 +78,15 @@ public:
 
 	}
 
+
+
 	GLFWwindow* window;
 
 private:
 	uint32_t no_mesh;
 	uint32_t no_m_mesh;
 
-	int framecounter_pos = framecounter;
+	//int framecounter_pos = framecounter;
 
 	VkDescriptorPool descriptorPool;
 

@@ -38,8 +38,9 @@ namespace vk_settings {
 	const VkColorSpaceKHR swapChainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const VkBool32 swapChainClipped = VK_TRUE;
 }
-
-playerCamera camera;	//referencing the extern variable defined in the main header
+namespace global {
+	playerCamera camera;	//referencing the extern variable defined in the global header
+}
 
 #ifdef NODEBUG
 const bool enableValidationLayers = false;
@@ -238,7 +239,7 @@ void vulkanApp::initVulkan(std::thread* data_thread) {
 
 
 void vulkanApp::mainLoop() {
-
+/*
 #ifdef player_camera
 	while (!glfwWindowShouldClose(window)) {
 #endif
@@ -266,7 +267,7 @@ void vulkanApp::mainLoop() {
 	auto end = std::chrono::high_resolution_clock::now();
 	std::cout << "Framerate " << 1000/std::chrono::duration <float, std::milli>(end - start).count() << " fps" << std::endl;
 #endif
-	}
+}*/
 }
 
 
@@ -360,7 +361,7 @@ void vulkanApp::recreateSwapChain() {
 void vulkanApp::drawFrame() {
 
 	for (uint32_t i = 0; i < no_m_mesh; i++) {
-		movingMeshes[i].updateVertexBuffer(device, framecounter, commandPool, graphicsQueue);
+		movingMeshes[i].updateVertexBuffer(device, global::framecounter, commandPool, graphicsQueue);
 	}
 
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -378,7 +379,10 @@ void vulkanApp::drawFrame() {
 		throw std::runtime_error("failed to acquire swap chain image!");
 	}
 
-	camera.updateCameraVectors();
+	#ifdef player_camera
+	//unnecessary for predefined because the camera vectors are updated with the ubos
+	global::camera.updateCameraVectors();
+	#endif
 
 	updateUniformBuffers(imageIndex);
 
@@ -435,21 +439,28 @@ void vulkanApp::drawFrame() {
 
 
 void vulkanApp::updateUniformBuffers(uint32_t currentImage) {
+	#ifdef precalculated_player_camera
+	global::camera.Position = camera_positions[global::framecounter];
+	global::camera.Yaw = camera_yaws[global::framecounter];
+	global::camera.Pitch = camera_pitchs[global::framecounter];
+
+	camera.updateCameraVectors();
+	#endif
 
 #pragma omp parallel for
 	for (uint32_t i = 0; i < no_mesh; i++) {
-		staticMeshes[i].ub.ubo.model = square_model[i].frame(framecounter);
+		uint64_t local_framecounter;
+		if (global::framecounter > square_model[i].total_frames - 1) {
+			local_framecounter = square_model[i].total_frames - 1;
+		} else {
+			local_framecounter = global::framecounter;
+		}
+		staticMeshes[i].ub.ubo.model = square_model[i].frame(local_framecounter);
 #ifdef player_camera
-		staticMeshes[i].ub.ubo.view = camera.view();
+		staticMeshes[i].ub.ubo.view = global::camera.view();
 #else
 #ifdef precalculated_player_camera
-		camera.Position = camera_positions[framecounter_pos];
-		camera.Yaw = camera_yaws[framecounter_pos];
-		camera.Pitch = camera_pitchs[framecounter_pos];
-
-		camera.updateCameraVectors();
-		staticMeshes[i].ub.ubo.view = camera.view();
-
+		staticMeshes[i].ub.ubo.view = global::camera.view();
 #else
 
 		staticMeshes[i].ub.ubo.view = glm::mat4(1.0f);
@@ -463,17 +474,18 @@ void vulkanApp::updateUniformBuffers(uint32_t currentImage) {
 #pragma omp parallel for
 	for (uint32_t i = no_mesh; i < no_mesh + no_m_mesh; i++) {
 		int j = i - no_mesh;
-		movingMeshes[j].Mesh.ub.ubo.model = square_model[i].frame(framecounter);//square_model[i];
+		uint64_t local_framecounter;
+		if (global::framecounter > square_model[i].total_frames - 1) {
+			local_framecounter = square_model[i].total_frames - 1;
+		} else {
+			local_framecounter = global::framecounter;
+		}
+		movingMeshes[j].Mesh.ub.ubo.model = square_model[i].frame(local_framecounter);//square_model[i];
 #ifdef player_camera
-		movingMeshes[j].Mesh.ub.ubo.view = camera.view();
+		movingMeshes[j].Mesh.ub.ubo.view = global::camera.view();
 #else
 #ifdef precalculated_player_camera
-		camera.Position = camera_positions[framecounter_pos];
-		camera.Yaw = camera_yaws[framecounter_pos];
-		camera.Pitch = camera_pitchs[framecounter_pos];
-
-		camera.updateCameraVectors();
-		movingMeshes[j].Mesh.ub.ubo.view = camera.view();
+		movingMeshes[j].Mesh.ub.ubo.view = global::camera.view();	//updated above
 
 #else
 

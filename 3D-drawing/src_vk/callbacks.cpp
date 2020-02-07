@@ -4,6 +4,7 @@
 #include "callbacks.h"     //main header
 //#include "GLFW/glfw3.h"
 #include <iostream>
+#include "global.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -39,8 +40,8 @@ void scroll_callback(GLFWwindow* window, double xoff, double yoff) {
 	camera.MovementSpeed += (float)yoff / 100000;
 #endif
 #endif*/
-  camera.targetSpeed += (float)yoff;
-	if (camera.targetSpeed < 0.001f) camera.targetSpeed = 0.001f;
+  global::camera.targetSpeed += (float)yoff;
+	if (global::camera.targetSpeed < 0.001f) global::camera.targetSpeed = 0.001f;
 }
 
 
@@ -63,7 +64,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 
 		window_last_x = (float)xpos;
 		window_last_y = (float)ypos;
-		camera.processMouse(xoffset, yoffset);
+		global::camera.processMouse(xoffset, yoffset);
 	}
 	else {
 		window_firstMouse = true;

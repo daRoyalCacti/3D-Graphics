@@ -9,6 +9,12 @@
 	#include <windows.h> 				//for closing console
 #endif
 
+namespace global {
+	uint64_t framecounter = 0; //global
+	bool increase_frames; //global
+}
+bool extra_conditions = false;
+
 int main() {
 #ifdef _WIN32
 #ifdef	NODEBUG
@@ -18,6 +24,12 @@ int main() {
 	ShowWindow(hWnd, SW_HIDE);
 #endif
 #endif
+
+	#ifdef frame_init_increase
+	global::increase_frames = true;
+	#else
+	global::increase_frames = false;
+	#endif
 
 	#ifndef NODEBUG
 		std::cout << "\n\n\n\n\n\n\n\n\n\n\n"; //to make the console look neater after compiling lots of files
@@ -36,19 +48,23 @@ int main() {
 		app.initVulkan(&thread1); 		//initialising vulkan
 													//this can not be done in parallel because the surface created by "initWindow" needs to be used for initilising vulkan
 
-		while (!glfwWindowShouldClose(app.window)) {	//keep the loop going until it is decided that the window should close
+		while (!glfwWindowShouldClose(app.window) || extra_conditions) {	//keep the loop going until it is decided that the window should close
 			#ifdef framerate
 				auto start = std::chrono::high_resolution_clock::now();
 			#endif
 			//there is likely some threading to be done here, but drawFrame is very slow compared to everything else
 			glfwPollEvents();													//get keyboard inputs and mouse movements
-			processWindowInput(app.window, &camera);	//process these inputs
+			processWindowInput(app.window);	//process these inputs
 			app.drawFrame();													//reader the next frame to the window
-			app.framecounter++;												//incrementing the framecounter every frame -- framecounter is used to getting frames of meshes and frames of movements
+			if (global::increase_frames) {		//if the frames should increase - this is used if going frame by frame
+				global::framecounter++;						//incrementing the framecounter every frame -- framecounter is used to getting frames of meshes and frames of movements
+			}
 			#ifdef framerate
 				auto end = std::chrono::high_resolution_clock::now();
 				std::cout << "Framerate " << 1000/std::chrono::duration <float, std::milli>(end - start).count() << " fps" << std::endl;
 			#endif
+
+			//precalculated_player_camera - extra_conditions true when framecounter is greater than the number of camera frames
 		}
 
 		app.cleanup();			//destroying resources used by vulkan
@@ -71,6 +87,6 @@ int main() {
 										//this is almost always commented because cleanup times are generally not of a huge concern but pressing enter when the program has finished gets annoying
 		#endif
 	#endif
-	
+
 	return EXIT_SUCCESS; //program completed normally
 }
