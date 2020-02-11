@@ -15,7 +15,8 @@
 #include "player_camera.h"				//for camera vectors and for ubo matrices
 #include "decriptorSetLayout.h"		//helper functions for creating the descriptor set layout
 #include "graphicsPipeline.h"			//helper functions for creating the graphics pipeline
-#include "callbacks.h"
+#include "callbacks.h"						//for all callback functions
+#include "check_error.h"					//for easy error checking of vulkan functions
 
 #include <thread>					//currently used for logging the number of threads -- plans to add concurrency
 #include <GLFW/glfw3.h>		//for creating the window and getting keyboard and mouse inputs
@@ -26,7 +27,8 @@
 #include <glm/glm.hpp>											//main glm header
 #include <glm/gtc/matrix_transform.hpp>			//for glm::rotate, glm::translate and similar
 
-#include <future>		//the return type of std::async (from <thread>)
+#include <future>		//for std::async and its return type std::future
+
 
 namespace vk_settings {
 	//for setting ubo.perspective using glm::perspective
@@ -34,6 +36,12 @@ namespace vk_settings {
 	const float near_plane = 0.1f;
 	const float far_plane = 100.0f;
 
+	//main settings
+	const int WIDTH = 800;
+	const int HEIGHT = 600;
+	const int MAX_FRAMES_IN_FLIGHT = 2;
+
+	//for swapchain creation
 	const VkFormat swapChainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	const VkColorSpaceKHR swapChainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const VkBool32 swapChainClipped = VK_TRUE;
@@ -136,13 +144,17 @@ void vulkanApp::initWindow() {
 #ifdef timing
 	auto start = std::chrono::steady_clock::now();
 #endif
+	//seems to be saying that vulkan is not supported despite the application running fine
+	//if (glfwVulkanSupported() == GLFW_FALSE) {
+	//	throw std::runtime_error("Vulkan is not minimally available");
+	//}
 	glfwInit(); //initilising the GLFW library
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);		//telling GLFW not to create an openGl context (GLFW was made for openGl)
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);			//telling GLFW that resizing is allowed (this requires special treatment with vulkan)
 																									//this is not working correctly at this given time
 
-	window = glfwCreateWindow(WIDTH, HEIGHT, window_name, nullptr, nullptr);	//creating the acutal window with a given size and name
+	window = glfwCreateWindow(vk_settings::WIDTH, vk_settings::HEIGHT, window_name, nullptr, nullptr);	//creating the acutal window with a given size and name
 																																						//window, WIDTH, HEIGHT, and window_name are all defined in the main header
 																																						//the 2 null pointers are which monitor to fullscreen on and which window whose context shares resources with
 																																						// - the first param is not used because the window can open where ever it wants and the second param is only useful with openGl
@@ -298,7 +310,7 @@ void vulkanApp::cleanup() {
 	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+	for (size_t i = 0; i < vk_settings::MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(device, inFlightFences[i], nullptr);
@@ -371,11 +383,13 @@ void vulkanApp::drawFrame() {
 
 	VkResult result = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
+	//manual error checking needed because functions need to be called on given errors
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreateSwapChain();
 		return;
 	}
 	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+		vk_check_result(result);
 		throw std::runtime_error("failed to acquire swap chain image!");
 	}
 
@@ -407,7 +421,7 @@ void vulkanApp::drawFrame() {
 
 	vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+	if (!vk_check_result(vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]))) {
 		throw std::runtime_error("failed to submit draw command buffer!");
 	}
 
@@ -429,11 +443,12 @@ void vulkanApp::drawFrame() {
 		recreateSwapChain();
 	}
 	else if (result != VK_SUCCESS) {
+		vk_check_result(result);
 		throw std::runtime_error("failed to present swap chain image!");
 	}
 
 
-	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	currentFrame = (currentFrame + 1) % vk_settings::MAX_FRAMES_IN_FLIGHT;
 
 }
 
@@ -591,8 +606,8 @@ void vulkanApp::createInstance() {
 		createInfo.pNext = nullptr;					//nothing to say if a validation layer is triggered because there is non
 	}
 
-	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {	//creating the instance with settings 'createInfo' -- instance is defined in the main header
-																																					//the nulltpr is for a function callback
+	if (!vk_check_result(vkCreateInstance(&createInfo, nullptr, &instance))) {	//creating the instance with settings 'createInfo' -- instance is defined in the main header
+																																						//the nulltpr is for a function callback
 		throw std::runtime_error("failed to create instance!");
 	}
 
@@ -623,7 +638,7 @@ void vulkanApp::setupDebugMessenger() {
 	VkDebugUtilsMessengerCreateInfoEXT createInfo;
 	populateDebugMessengerCreateInfo(createInfo); //helper function to fill the struct
 
-	if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) { 	//create the debug messenger for the message severity and message type defined in 'populateDebugMessengerCreateInfo'
+	if (!vk_check_result(CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger))) { 	//create the debug messenger for the message severity and message type defined in 'populateDebugMessengerCreateInfo'
 																																																			//which will call the function 'debugCallback'
 																																																			//the 'CreateDebugUtilsMessengerEXT' is defined in the class
 																																																			//see https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Validation_layers for how this works becuse i dont really understand
@@ -649,7 +664,7 @@ void vulkanApp::createSurface() {
 		auto start = std::chrono::steady_clock::now();
 	#endif
 
-	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+	if (!glfw_check_result(glfwCreateWindowSurface(instance, window, nullptr, &surface))) {
 		//creating the surface using glfw -- can be done in raw vulkan but doesn't make much sense because glfw is being used
 		//the surface creation handles different platforms on its own
 		throw std::runtime_error("failed to create window surface!");
@@ -681,13 +696,13 @@ void vulkanApp::pickPhysicalDevice() {
 		//logging all devices capable of running vulkan
 		//this is in gore_detail because it is not necessary to know the vast majority of the time
 		VkPhysicalDeviceProperties physicalDeviceProperties;
-		std::cout << "Possible physical devices: " << std::endl;
+		std::clog << "Possible physical devices: " << std::endl;
 		for (const auto& current_device : devices) {
 			//seems to find the 1 graphics card twice?
 			vkGetPhysicalDeviceProperties(current_device, &physicalDeviceProperties);
-			std::cout << "  " << indentifyDevice(physicalDeviceProperties.deviceType) << " " << physicalDeviceProperties.deviceName << std::endl;
+			std::clog << "  " << indentifyDevice(physicalDeviceProperties.deviceType) << " " << physicalDeviceProperties.deviceName << std::endl;
 		}
-		std::printf("\n");	//for formatting
+		std::clog << std::endl;;	//for formatting
 	#endif
 
 	std::multimap<int, VkPhysicalDevice> candiateDevices;	//maps because it will automatically sort the devices by which one is move favourable
@@ -710,11 +725,11 @@ void vulkanApp::pickPhysicalDevice() {
 		std::vector<VkExtensionProperties> availableExtensions(extensionCount);
 		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, availableExtensions.data());
 
-		std::cout << "Available device extensions:" << std::endl;
+		std::clog << "Available device extensions:" << std::endl;
 		for (const auto& extension : availableExtensions) {
-			std::cout << "  " << extension.extensionName << std::endl;
+			std::clog << "  " << extension.extensionName << std::endl;
 		}
-		std::printf("\n");
+		std::clog << std::endl;
 	#endif
 
 	if (physicalDevice == VK_NULL_HANDLE) {
@@ -818,7 +833,7 @@ void vulkanApp::createLogicalDevice() {
 		createInfo.enabledLayerCount = 0;			//no validation layers if validation layers are not available
 	}
 
-	if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS) { //creating 1 logical device for the physical device
+	if (!vk_check_result(vkCreateDevice(physicalDevice, &createInfo, nullptr, &device))) { //creating 1 logical device for the physical device
 		throw std::runtime_error("failed to create logical device!");
 	}
 
@@ -898,7 +913,7 @@ void vulkanApp::createSwapChain() {
 
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS) { //creating the swap chain
+	if (!vk_check_result(vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain))) { //creating the swap chain
 		throw std::runtime_error("failed to create swap chain!");
 	}
 
@@ -1086,7 +1101,7 @@ void vulkanApp::createRenderPass() {
 	renderPassInfo.pDependencies = &dependency;
 
 
-	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+	if (!vk_check_result(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass))) {
 		throw std::runtime_error("failed to create render pass!");
 	}
 
@@ -1111,7 +1126,7 @@ void vulkanApp::createDescriptorSetLayout() {
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
 	layoutInfo.pBindings = bindings.data();
 
-	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+	if (!vk_check_result(vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout))) {
 		throw std::runtime_error("failed to create descriptor set layout!");
 	}
 
@@ -1164,7 +1179,7 @@ void vulkanApp::createGraphicsPipeline() {
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = GB::createPipelineLayoutInfo(&descriptorSetLayout);
 
-	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS){
+	if (!vk_check_result(vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout))){
 			throw std::runtime_error("failed to create pipeline layout!");
 	}
 
@@ -1189,7 +1204,7 @@ void vulkanApp::createGraphicsPipeline() {
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -1;
 
-	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+	if (!vk_check_result(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline))) {
 			throw std::runtime_error("failed to create graphics pipeline!");
 	}
 
@@ -1222,7 +1237,7 @@ void vulkanApp::createFramebuffers() {
 		framebufferInfo.height = swapChainExtent.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
+		if (!vk_check_result(vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]))) {
 			throw std::runtime_error("failed to create framebuffer!");
 		}
 	}
@@ -1245,7 +1260,7 @@ void vulkanApp::createCommandPool() {
 	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 	poolInfo.flags = 0;
 
-	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+	if (!vk_check_result(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool))) {
 		throw std::runtime_error("failed to create command pool!");
 	}
 
@@ -1393,7 +1408,7 @@ void vulkanApp::createTextureSampler() {
 	samplerInfo.minLod = 0.0f;
 	samplerInfo.maxLod = 0.0f;
 
-	if (vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler) != VK_SUCCESS) {
+	if (!vk_check_result(vkCreateSampler(device, &samplerInfo, nullptr, &textureSampler))) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
 
@@ -1491,7 +1506,7 @@ void vulkanApp::createDescriptorPool() {
 	poolInfo.pPoolSizes = poolSizes.data();
 	poolInfo.maxSets = static_cast<uint32_t>(swapChainImages.size() * (no_mesh + no_m_mesh));
 
-	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+	if (!vk_check_result(vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool))) {
 		throw std::runtime_error("failed to create descriptor pool!");
 	}
 
@@ -1534,7 +1549,7 @@ void vulkanApp::createCommandBuffers() {
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
-	if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+	if (!vk_check_result(vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()))) {
 		throw std::runtime_error("failed to allocate command buffers!");
 	}
 
@@ -1544,7 +1559,7 @@ void vulkanApp::createCommandBuffers() {
 		beginInfo.flags = 0;
 		beginInfo.pInheritanceInfo = nullptr;
 
-		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
+		if (!vk_check_result(vkBeginCommandBuffer(commandBuffers[i], &beginInfo))) {
 			throw std::runtime_error("failed to begin recording command buffer!");
 		}
 
@@ -1579,7 +1594,7 @@ void vulkanApp::createCommandBuffers() {
 		vkCmdEndRenderPass(commandBuffers[i]);
 
 
-		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
+		if (!vk_check_result(vkEndCommandBuffer(commandBuffers[i]))) {
 			throw std::runtime_error("failed to record command buffer");
 		}
 
@@ -1597,9 +1612,9 @@ void vulkanApp::createSyncObjects() {
 		auto start = std::chrono::steady_clock::now();
 	#endif
 
-	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+	imageAvailableSemaphores.resize(vk_settings::MAX_FRAMES_IN_FLIGHT);
+	renderFinishedSemaphores.resize(vk_settings::MAX_FRAMES_IN_FLIGHT);
+	inFlightFences.resize(vk_settings::MAX_FRAMES_IN_FLIGHT);
 	imagesInFlight.resize(swapChainImages.size(), VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo semaphoreInfo = {};
@@ -1610,10 +1625,10 @@ void vulkanApp::createSyncObjects() {
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-			vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-			vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
+	for (size_t i = 0; i < vk_settings::MAX_FRAMES_IN_FLIGHT; i++) {
+		if (!vk_check_result(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i])) ||
+			!vk_check_result(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i])) ||
+			!vk_check_result(vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]))) {
 
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
@@ -1755,12 +1770,12 @@ std::vector<const char*> vulkanApp::getRequiredExtensions() {
 
 
 	#ifdef gore_detail
-		std::cout << "Available instance extensions:" << std::endl;
+		std::clog << "Available instance extensions:" << std::endl;
 
 		for (const auto& extension : instance_extensions) {
-			std::cout << "  " << extension.extensionName << std::endl;
+			std::clog << "  " << extension.extensionName << std::endl;
 		}
-		std::printf("\n");
+		std::clog << std::endl;
 	#endif
 
 	//extensions.push_back("VK_EXT_display_surface_counter"); //the values for these are shown if gore_detail is defined
@@ -1776,11 +1791,11 @@ bool vulkanApp::checkValidationLayerSupport() {
 	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data()); //fill the vector with the validation layers
 
 	#ifdef gore_detail
-		std::cout << "Available validation layers:" << std::endl;
+		std::clog << "Available validation layers:" << std::endl;
 		for (const auto& layers : availableLayers) { //printing out all validation layers that are available
-			std::cout << "  " << layers.layerName << std::endl;
+			std::clog << "  " << layers.layerName << std::endl;
 		}
-		std::printf("\n");
+		std::clog << std::endl;
 	#endif
 
 	bool layerFound;

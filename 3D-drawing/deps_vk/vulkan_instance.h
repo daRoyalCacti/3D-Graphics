@@ -15,9 +15,7 @@
 #include "moving_simple_mesh.h"		//for the rendering and loading of animated meshes
 #include "global.h"			//for preprocessor definitions
 
-const int WIDTH = 800;
-const int HEIGHT = 600;
-const int MAX_FRAMES_IN_FLIGHT = 2;
+
 
 const std::vector<const char*> validationLayers = { //what validation layers to use
 	"VK_LAYER_KHRONOS_validation"
