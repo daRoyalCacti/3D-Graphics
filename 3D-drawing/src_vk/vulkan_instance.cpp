@@ -45,9 +45,14 @@ namespace vk_settings {
 	const VkFormat swapChainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	const VkColorSpaceKHR swapChainColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 	const VkBool32 swapChainClipped = VK_TRUE;
+
+	const VkCullModeFlags cull_mode = VK_CULL_MODE_BACK_BIT; //for modes see  https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkCullModeFlagBits.html
 }
 namespace global {
 	playerCamera camera;	//referencing the extern variable defined in the global header
+	#ifdef precalculated_player_camera
+		uint32_t total_frames;
+	#endif
 }
 
 #ifdef NODEBUG
@@ -70,10 +75,19 @@ void vulkanApp::loadData() {
 
 	std::future<uint32_t> image_no = std::async(&files::read_texture);
 
+	#ifdef precalculated_player_camera
+		std::future<uint32_t> camera_positions_no = std::async(&files::read_camera);
+	//files::read_camera(camera_positions, camera_yaws, camera_pitchs);
+	#endif
+
 	no_mesh = mesh_no.get();
 	no_m_mesh = m_mesh_no.get();
 	ubo_no.wait();
 	uint32_t no_image = image_no.get();
+	#ifdef precalculated_player_camera
+		no_camera_positions = camera_positions_no.get();
+		global::total_frames = no_camera_positions;
+	#endif
 
 
 	//keeping around for a while because having trouble with seg faults
@@ -97,16 +111,28 @@ void vulkanApp::loadData() {
 	square_model = new ubo_model[no_mesh + no_m_mesh];
 	imagePixels = new pixels[no_image];
 
-	//this is done very messy -- need to update in the future
-	std::thread static_thread(&files::vk::Vertices_to_Simple_Static_Mesh, staticMeshes);
-	std::thread moving_therad(&files::vk::Vertices_to_Simple_Moving_Mesh, movingMeshes);
-	std::thread rotations_thread(&files::vk::Rotations_to_UBOs, square_model);
-	std::thread texture_thread(&files::vk::Texture_to_Pixels, imagePixels);
+	#ifdef precalculated_player_camera
+		camera_positions = new glm::vec3[no_camera_positions];
+		camera_yaws = new float[no_camera_positions];
+		camera_pitchs = new float[no_camera_positions];
+	#endif
 
-	static_thread.join();
-	moving_therad.join();
-	rotations_thread.join();
-	texture_thread.join();
+	//this is done very messy -- need to update in the future
+	std::future<void> static_thread = std::async(&files::vk::Vertices_to_Simple_Static_Mesh, staticMeshes);
+	std::future<void> moving_therad = std::async(&files::vk::Vertices_to_Simple_Moving_Mesh, movingMeshes);
+	std::future<void> rotations_thread = std::async(&files::vk::Rotations_to_UBOs, square_model);
+	std::future<void> texture_thread = std::async(&files::vk::Texture_to_Pixels, imagePixels);
+	#ifdef precalculated_player_camera
+		std::future<void> camera_thread = std::async(&files::vk::Camera_to_Vectors, camera_positions, camera_yaws, camera_pitchs);
+	#endif
+
+	static_thread.wait();
+	moving_therad.wait();
+	rotations_thread.wait();
+	texture_thread.wait();
+	#ifdef precalculated_player_camera
+		camera_thread.wait();
+	#endif
 
 /*#ifdef precalculated_player_camera
 	#ifdef detailed_timing
@@ -332,6 +358,12 @@ void vulkanApp::cleanup() {
 	delete [] movingMeshes;
 	delete [] imagePixels;
 
+	#ifdef precalculated_player_camera
+		delete [] camera_positions;
+		delete [] camera_yaws;
+		delete [] camera_pitchs;
+	#endif
+
 	glfwDestroyWindow(window);
 
 	glfwTerminate();
@@ -459,7 +491,7 @@ void vulkanApp::updateUniformBuffers(uint32_t currentImage) {
 	global::camera.Yaw = camera_yaws[global::framecounter];
 	global::camera.Pitch = camera_pitchs[global::framecounter];
 
-	camera.updateCameraVectors();
+	global::camera.updateCameraVectors();
 	#endif
 
 #pragma omp parallel for
@@ -1164,7 +1196,7 @@ void vulkanApp::createGraphicsPipeline() {
 
 	VkPipelineViewportStateCreateInfo viewportState = GB::createViewportState(&viewport, &scissor);
 
-	VkPipelineRasterizationStateCreateInfo rasterizer = GB::createRasterizer(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+	VkPipelineRasterizationStateCreateInfo rasterizer = GB::createRasterizer(VK_POLYGON_MODE_FILL, vk_settings::cull_mode, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 
 	VkPipelineMultisampleStateCreateInfo multisampling = GB::multisamplingInfo();
 

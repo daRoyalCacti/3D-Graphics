@@ -23,24 +23,6 @@ namespace texture_generation {
       bitmapSizes.push_back(bitmap.height);
     }
 
-    inline void write_images_png() { //includes cleanup
-      mode = PNG;
-      for (auto& bitmap : bitmaps) {
-        if (!bitmap.generate_png(path)) {
-          std::cerr << "failed to generate png" << std::endl;
-        }
-        bitmap.cleanup();
-      }
-    }
-
-    inline void write_images_bin() {
-      mode = BIN;
-      for (auto& bitmap : bitmaps) {
-        bitmap.generate_bin(path);
-        bitmap.cleanup();
-      }
-    }
-
     inline void write_data() {
       std::ofstream data(path + "data.bin", std::ios::binary);
       uint32_t no_images = bitmaps.size();
@@ -51,6 +33,28 @@ namespace texture_generation {
 
       data.close();
     }
+
+    inline void write_images_png() { //includes cleanup
+      mode = PNG;
+      write_data();
+      for (auto& bitmap : bitmaps) {
+        if (!bitmap.generate_png(path)) {
+          std::cerr << "failed to generate png" << std::endl;
+        }
+        bitmap.cleanup();
+      }
+    }
+
+    inline void write_images_bin() {
+      mode = BIN;
+      write_data();
+      for (auto& bitmap : bitmaps) {
+        bitmap.generate_bin(path);
+        bitmap.cleanup();
+      }
+    }
+
+
 
     __attribute__((const)) static inline const std::string get_main_output() {
       return "/home/george/Documents/Projects/Major-3D/3D-drawing/textures/";

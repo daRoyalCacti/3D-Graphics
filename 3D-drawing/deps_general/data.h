@@ -24,9 +24,13 @@ namespace files {
 		void Vertices_to_Simple_Static_Mesh(staticSimpleMesh*);
  		void Vertices_to_Simple_Moving_Mesh(moving_simple_mesh*);
  		void Rotations_to_UBOs(ubo_model*);
+		#ifdef precalculated_player_camera
+			void Camera_to_Vectors(glm::vec3*, float*, float*);
+		#endif
 	}
 
 	#ifdef precalculated_player_camera
-		void Load_Camera_Positions(glm::vec3*, float*, float*);
+		uint32_t read_camera();
+		void Camera_to_Vectors(glm::vec3*, float*, float*);
 	#endif
 }

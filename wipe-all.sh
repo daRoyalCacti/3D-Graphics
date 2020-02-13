@@ -13,3 +13,5 @@ ls *.spv
 printf "last chance to abort\npress <enter> key to proceed\n"
 read keypress
 rm *.spv
+cd /home/george/Documents/Projects/Major-3D/Generate_Camera/
+make wipe

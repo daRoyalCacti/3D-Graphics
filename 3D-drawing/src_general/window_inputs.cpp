@@ -52,43 +52,44 @@ void processWindowInput(GLFWwindow *window){
       global::camera.move_down();
 		}
 
-
-		if (glfwGetKey(window,GLFW_KEY_KP_ADD) == GLFW_PRESS) {
-			if (!last_frame_plus) {
-				global::framecounter = global::framecounter + 1;
-			}
-			last_frame_plus = true;
-		}
-
-		if (glfwGetKey(window,GLFW_KEY_KP_ADD) == GLFW_RELEASE) {
-			last_frame_plus = false;
-		}
-
-
-		if (glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS) {
-			if (!last_frame_minus) {
-				uint64_t last_framecounter = global::framecounter;
-				global::framecounter = global::framecounter - 1;
-				if (global::framecounter > last_framecounter) {	//'-1' will always make a number smaller, so if its bigger then there's been underflow (framecounter is unsigned)
-					global::framecounter = 0;
-				}
-			}
-			last_frame_minus = true;
-		}
-
-		if (glfwGetKey(window,GLFW_KEY_KP_SUBTRACT) == GLFW_RELEASE) {
-			last_frame_minus = false;
-		}
-
-		if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
-			global::increase_frames = true;
-		}
-
-		if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) {
-			global::increase_frames = false;
-		}
-
 #endif
+
+	if (glfwGetKey(window,GLFW_KEY_KP_ADD) == GLFW_PRESS) {
+		if (!last_frame_plus) {
+			global::framecounter = global::framecounter + 1;
+		}
+		last_frame_plus = true;
+	}
+
+	if (glfwGetKey(window,GLFW_KEY_KP_ADD) == GLFW_RELEASE) {
+		last_frame_plus = false;
+	}
+
+
+	if (glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS) {
+		if (!last_frame_minus) {
+			uint64_t last_framecounter = global::framecounter;
+			global::framecounter = global::framecounter - 1;
+			if (global::framecounter > last_framecounter) {	//'-1' will always make a number smaller, so if its bigger then there's been underflow (framecounter is unsigned)
+				global::framecounter = 0;
+			}
+		}
+		last_frame_minus = true;
+	}
+
+	if (glfwGetKey(window,GLFW_KEY_KP_SUBTRACT) == GLFW_RELEASE) {
+		last_frame_minus = false;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
+		global::increase_frames = true;
+	}
+
+	if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) {
+		global::increase_frames = false;
+	}
+
+
 	if (glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS)
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 

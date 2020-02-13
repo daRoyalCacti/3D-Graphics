@@ -23,6 +23,7 @@ namespace files {
   uint32_t no_ubo_mesh; //number of movements
   uint32_t* no_frames; //number of frames for each ubo
   uint32_t* frames_for_mesh; //number of frames for each moving mesh
+  uint32_t no_camera_frames;
 
   std::mutex mtx;
 
@@ -36,10 +37,14 @@ namespace files {
   std::vector<size_t> image_dimensions;
   std::vector<uint32_t> image_ids;
 
+  std::vector<glm::vec3> positions;
+  std::vector<float> yaws;
+  std::vector<float> pitches;
+
 
   std::vector<std::vector<glm::mat4>> rotations; //each mesh needs a rotation and each mesh has multiple frames of rotation
 
-  #ifdef precalculated_player_camera //NOT COMPLETE ==================================================================
+  /*#ifdef precalculated_player_camera //NOT COMPLETE ==================================================================
   	void Load_Camera_Positions(glm::vec3* camera_positions, float* camera_yaws, float* camera_pitchs) {
       glm::vec3 _camera_positions[no_camera_positions] = { {0,0,0} };
       float _camera_yaws[no_camera_positions] = { 230, 230, 230, 230 };
@@ -49,7 +54,7 @@ namespace files {
       memcpy(camera_yaws, _camera_yaws, sizeof(_camera_yaws));
       memcpy(camera_pitchs, _camera_pitchs, sizeof(_camera_pitchs));
     } //end function
-  #endif
+  #endif*/
 
 
   uint32_t read_Simple_Static_mesh() {
@@ -425,5 +430,44 @@ namespace files {
     }
   }
 
+  #ifdef precalculated_player_camera
+    uint32_t read_camera() {
+      #ifdef detailed_timing
+        auto start = std::chrono::steady_clock::now();
+      #endif
+
+
+
+      //reading data
+      std::ifstream data_file("./Camera/data" + file_extension, std::ios::binary); data_file.read((char*)&no_camera_frames, sizeof(uint32_t) ); data_file.close();
+
+      //creating arrays from data
+      positions.resize(no_camera_frames);
+      yaws.resize(no_camera_frames);
+      pitches.resize(no_camera_frames);
+
+      //reading into arrays
+      std::ifstream pos_file("./Camera/pos" + file_extension, std::ios::binary); pos_file.read((char*)&positions[0], sizeof(glm::vec3) * no_camera_frames); pos_file.close();
+      std::ifstream yaws_file("./Camera/yaw" + file_extension, std::ios::binary); yaws_file.read((char*)&yaws[0], sizeof(float) * no_camera_frames); yaws_file.close();
+      std::ifstream pitch_file("./Camera/pitch" + file_extension, std::ios::binary); pitch_file.read((char*)&pitches[0], sizeof(float) * no_camera_frames); pitch_file.close();
+
+      #ifdef detailed_timing
+      	auto end = std::chrono::steady_clock::now();
+        mtx.lock();
+      	std::cout << "\t Camera reading took \t\t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
+        mtx.unlock();
+      #endif
+      
+      return no_camera_frames;
+    }
+
+    namespace vk {
+      void Camera_to_Vectors(glm::vec3* pos, float* yaw, float* pitch) {
+        memcpy(pos, positions.data(), sizeof(glm::vec3) * no_camera_frames);
+        memcpy(yaw, yaws.data(), sizeof(float) * no_camera_frames);
+        memcpy(pitch, pitches.data(), sizeof(float) * no_camera_frames);
+      }
+    }
+  #endif
 
 } //end namespace

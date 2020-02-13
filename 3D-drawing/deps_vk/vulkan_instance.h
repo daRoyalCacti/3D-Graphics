@@ -96,9 +96,10 @@ private:
 	pixels *imagePixels;
 
 	#ifdef precalculated_player_camera
-		glm::vec3 camera_positions[no_camera_positions];
-		float camera_yaws[no_camera_positions];
-		float camera_pitchs[no_camera_positions];
+		uint32_t no_camera_positions;
+		glm::vec3* camera_positions;
+		float* camera_yaws;
+		float* camera_pitchs;
 	#endif
 
 	const char* window_name = "Vulkan";

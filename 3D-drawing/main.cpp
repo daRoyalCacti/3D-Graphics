@@ -13,7 +13,6 @@ namespace global {
 	uint64_t framecounter = 0; //global
 	bool increase_frames; //global
 }
-bool extra_conditions = false;
 
 int main() {
 #ifdef _WIN32
@@ -48,7 +47,7 @@ int main() {
 		app.initVulkan(&thread1); 		//initialising vulkan
 													//this can not be done in parallel because the surface created by "initWindow" needs to be used for initilising vulkan
 
-		while (!glfwWindowShouldClose(app.window) || extra_conditions) {	//keep the loop going until it is decided that the window should close
+		while (!glfwWindowShouldClose(app.window)) {	//keep the loop going until it is decided that the window should close
 			#ifdef framerate
 				auto start = std::chrono::high_resolution_clock::now();
 			#endif
@@ -64,7 +63,12 @@ int main() {
 				std::cout << "Framerate " << 1000/std::chrono::duration <float, std::milli>(end - start).count() << " fps" << std::endl;
 			#endif
 
-			//precalculated_player_camera - extra_conditions true when framecounter is greater than the number of camera frames
+			//extra_conditions true when framecounter is greater than the number of camera frames
+			#ifdef precalculated_player_camera
+			if (global::framecounter >= global::total_frames) {
+				break;
+			}
+			#endif
 		}
 
 		app.cleanup();			//destroying resources used by vulkan

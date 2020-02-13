@@ -3,8 +3,6 @@
 #include "bitmaps.h"
 #include "gradients.h"
 
-const std::string file_location = "/home/george/Documents/Projects/Major-3D/3D-drawing/textures/";
-
 const int image_width = 100, image_height = 100;  //used only for testing
 
 namespace texture_examples = texture_generation::examples;
@@ -21,7 +19,7 @@ int main() {
   //images.write_images_png();
   images.write_images_bin();
 
-  images.write_data();
+  //images.write_data();
 
   return 0;
 }
