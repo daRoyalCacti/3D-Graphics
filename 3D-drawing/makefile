@@ -124,3 +124,4 @@ wipe:
 	rm -f $(ODIR)/RELEASE/*.o *~ $(INCDIR)/*~ $(EXE_RELEASE)
 	rm -f $(ODIR)/DEBUG/*.d *~ $(INCDIR)/*~ $(ODIR)/DEBUG/*.d *~
 	rm -f $(ODIR)/RELEASE/*.d *~ $(INCDIR)/*~ $(ODIR)/DEBUG/*.d *~
+	./delete_screenshots.sh

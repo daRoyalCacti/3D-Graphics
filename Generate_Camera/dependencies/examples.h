@@ -37,7 +37,7 @@ namespace Camera_Generation {
       std::vector<float> unif_rotate(const U rotation, const T size) {
         std::vector<float> return_vec;
         return_vec.resize(size);
-        const U rotation_step = 2 * M_PI / (double) rotation;
+        const U rotation_step = 360 / (double) rotation;
         for (T i = 0; i < size; i++) {
           return_vec[i] = rotation_step * i;
         }

@@ -66,8 +66,6 @@ public:
 	void drawFrame();
 
 
-	//uint64_t framecounter = 0;	//will essentially never overflow at 60fps (millenia)
-
 	vulkanApp() {
 
 	}
@@ -76,6 +74,9 @@ public:
 
 	}
 
+	#ifdef naive_recording
+	void take_screenshot(const char*);
+	#endif
 
 
 	GLFWwindow* window;

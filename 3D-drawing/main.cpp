@@ -14,6 +14,10 @@ namespace global {
 	bool increase_frames; //global
 }
 
+#ifdef naive_recording
+uint32_t image_no = 0;
+#endif
+
 int main() {
 #ifdef _WIN32
 #ifdef	NODEBUG
@@ -63,6 +67,18 @@ int main() {
 				std::cout << "Framerate " << 1000/std::chrono::duration <float, std::milli>(end - start).count() << " fps" << std::endl;
 			#endif
 
+			#ifdef log_frame_no
+			std::cout << global::framecounter << std::endl;
+			#endif
+
+			#ifdef log_camera_vecs
+			std::cout << "pos = " << global::camera.Position.x << " " << global::camera.Position.y << " " << global::camera.Position.z << std::endl;
+			std::cout << "yaw = " << global::camera.Yaw << "  pitch = " << global::camera.Pitch << std::endl;
+			#endif
+
+			#ifdef naive_recording
+			app.take_screenshot(("./screenshots/" + std::to_string(image_no++) + ".ppm").c_str());
+			#endif
 			//extra_conditions true when framecounter is greater than the number of camera frames
 			#ifdef precalculated_player_camera
 			if (global::framecounter >= global::total_frames) {
