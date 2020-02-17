@@ -12,6 +12,8 @@ float results[size_data];
 float data2[size_data2];
 float results2[size_data2];
 
+float scale[1] = {3.0f};
+
 int main() {
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -28,10 +30,16 @@ int main() {
   openCl_instance openCl;
   //openCl.run();
   openCl.init();
-  openCl.square(data, results, size_data);
-  openCl.square(data2, results2, size_data2);
+  //openCl.square(data, results, size_data);
+  //openCl.square(data2, results2, size_data2);
+  openCl.scale(data, results, scale,  size_data);
   openCl.cleanup();
 
+  for (unsigned i = 0; i < size_data; i++) {
+    if (results[i] - scale[0] * data[i] > 0.01) {
+      std::cerr << "value " << i << " is wrong" << std::endl;
+    }
+  }
 
   auto end = std::chrono::high_resolution_clock::now();
   std::cout << "Completed in \t\t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;

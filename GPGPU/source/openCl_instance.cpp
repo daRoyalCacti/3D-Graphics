@@ -1,4 +1,5 @@
 #include "openCl_instance.h"
+#include "error_checking.h"
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -18,15 +19,7 @@ void openCl_instance::query_platform() {
   //clGetPlatformInfo(..) can be used to get information about the platform : see https://www.khronos.org/registry/OpenCL/sdk/1.0/docs/man/xhtml/clGetPlatformInfo.html
 
   //error checking
-  if (err != CL_SUCCESS) { //there was some error
-    std::cerr << "Failed to get platform ids" << std::endl;
-    if (err == CL_INVALID_VALUE) {
-      std::cerr << "\tThe platforms and number of platforms are null or the number of entries is 0" << std::endl;
-    } else if (err == -1001) {
-      std::cerr << "\tThis could be because the ICD could not be found or some other issue with the development environment" << std::endl;
-    }
-    exit(EXIT_FAILURE);
-  }
+  cl_check_result(err, "clGetPlatformIDs");
 }
 
 void openCl_instance::query_device() {
@@ -42,20 +35,8 @@ void openCl_instance::query_device() {
   );
   //clGetDeviceInfo(..) can be used to find the capabilities for the found device -- very similar to clinfo in the shell
 
-  //error checkcing
-  if (err != CL_SUCCESS) {
-    std::cerr << "Failed to get device ids" << std::endl;
-    if (err == CL_INVALID_PLATFORM) {
-      std::cerr << "\tThe platform id entered is not for a valid platform" << std::endl;
-    } else if (err == CL_INVALID_DEVICE_TYPE) {
-      std::cerr << "\tThe device type entered is not a valid type of openCl device" << std::endl;
-    } else if (err == CL_INVALID_VALUE) {
-      std::cerr << "\tThere is an issue with the values for the number of entries and the device type" << std::endl;
-    } else if (err == CL_DEVICE_NOT_FOUND) {
-      std::cerr << "\tNo OpenCl devices were found of the specified device type" << std::endl;
-    }
-    exit(EXIT_FAILURE);
-  }
+  cl_check_result(err, "clGetDeviceIDs");
+
 }
 
 void openCl_instance::create_context() {
@@ -75,22 +56,8 @@ void openCl_instance::create_context() {
     &err
   );
 
-  //error checking
-  if (err != CL_SUCCESS) {
-    std::cerr << "Failed to create context" << std::endl;
-    if (err == CL_INVALID_PLATFORM) {
-      std::cerr << "\tThere is a problem with the properties\n\tor the platfrom specified is not valid" << std::endl;
-    } else if (err == CL_INVALID_VALUE) {
-      std::cerr << "\tThere is a problem with some of the set values" << std::endl;
-    } else if (err == CL_INVALID_DEVICE) {
-      std::cerr << "\tThe device is invalid or the device is not associated with the specified platform" << std::endl;
-    } else if (err == CL_DEVICE_NOT_AVAILABLE) {
-      std::cerr << "\tDevice is not available but is a valid device" << std::endl;
-    } else if (err == CL_OUT_OF_HOST_MEMORY) {
-      std::cerr << "\tFailed to allocate resources on the host" << std::endl;
-    }
-    exit(EXIT_FAILURE);
-  }
+  cl_check_result(err, "clCreateContext");
+
 }
 
 void openCl_instance::create_command_queue() {
@@ -224,12 +191,73 @@ void openCl_instance::square(float* input, float* output, const uint32_t size) {
     auto start12 = std::chrono::high_resolution_clock::now();
   #endif
   err = clFinish(command_queue); //wait for commands to be serviced before reading results
+  cl_check_result(err, "clFinish");
   #ifdef timing
     auto end12 = std::chrono::high_resolution_clock::now();
     std::cout << "Time waiting \t\t\t\t" << std::chrono::duration <double, std::milli>(end12 - start12).count() << "ms" << std::endl;
     auto start13 = std::chrono::high_resolution_clock::now();
   #endif
   read_from_buffers_square(output, size);
+  #ifdef timing
+    auto end13 = std::chrono::high_resolution_clock::now();
+    std::cout << "Buffer reading took \t\t\t" << std::chrono::duration <double, std::milli>(end13 - start13).count() << "ms" << std::endl;
+  #endif
+}
+
+void openCl_instance::scale(float* input, float* output, float* scale, const uint32_t size) {
+  #ifdef timing
+    auto start5 = std::chrono::high_resolution_clock::now();
+  #endif
+  create_program_object_scale();
+  #ifdef timing
+    auto end5 = std::chrono::high_resolution_clock::now();
+    std::cout << "Program creation took \t\t\t" << std::chrono::duration <double, std::milli>(end5 - start5).count() << "ms" << std::endl;
+    auto start6 = std::chrono::high_resolution_clock::now();
+  #endif
+  build_program_scale();
+  #ifdef timing
+    auto end6 = std::chrono::high_resolution_clock::now();
+    std::cout << "Program building took \t\t\t" << std::chrono::duration <double, std::milli>(end6 - start6).count() << "ms" << std::endl;
+    auto start7 = std::chrono::high_resolution_clock::now();
+  #endif
+  create_kernel_objects_scale();
+  #ifdef timing
+    auto end7 = std::chrono::high_resolution_clock::now();
+    std::cout << "Kernel creation took \t\t\t" << std::chrono::duration <double, std::milli>(end7 - start7).count() << "ms" << std::endl;
+    auto start8 = std::chrono::high_resolution_clock::now();
+  #endif
+  create_buffers_scale(size);
+  #ifdef timing
+    auto end8 = std::chrono::high_resolution_clock::now();
+    std::cout << "Buffer creation took \t\t\t" << std::chrono::duration <double, std::milli>(end8 - start8).count() << "ms" << std::endl;
+    auto start9 = std::chrono::high_resolution_clock::now();
+  #endif
+  write_to_buffers_scale(input, scale, size);
+  #ifdef timing
+    auto end9 = std::chrono::high_resolution_clock::now();
+    std::cout << "Buffer writing took \t\t\t" << std::chrono::duration <double, std::milli>(end9 - start9).count() << "ms" << std::endl;
+    auto start10 = std::chrono::high_resolution_clock::now();
+  #endif
+  set_kernel_arguments_scale();
+  #ifdef timing
+    auto end10 = std::chrono::high_resolution_clock::now();
+    std::cout << "Kernel argument setting took \t\t" << std::chrono::duration <double, std::milli>(end10 - start10).count() << "ms" << std::endl;
+    auto start11 = std::chrono::high_resolution_clock::now();
+  #endif
+  enqueue_kernel_scale(size);
+  #ifdef timing
+    auto end11 = std::chrono::high_resolution_clock::now();
+    std::cout << "Kernel enqueueing took \t\t\t" << std::chrono::duration <double, std::milli>(end11 - start11).count() << "ms" << std::endl;
+    auto start12 = std::chrono::high_resolution_clock::now();
+  #endif
+  err = clFinish(command_queue); //wait for commands to be serviced before reading results
+  cl_check_result(err, "clFinish");
+  #ifdef timing
+    auto end12 = std::chrono::high_resolution_clock::now();
+    std::cout << "Time waiting \t\t\t\t" << std::chrono::duration <double, std::milli>(end12 - start12).count() << "ms" << std::endl;
+    auto start13 = std::chrono::high_resolution_clock::now();
+  #endif
+  read_from_buffers_scale(output, size);
   #ifdef timing
     auto end13 = std::chrono::high_resolution_clock::now();
     std::cout << "Buffer reading took \t\t\t" << std::chrono::duration <double, std::milli>(end13 - start13).count() << "ms" << std::endl;
