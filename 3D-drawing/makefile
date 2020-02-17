@@ -46,8 +46,8 @@ DEBUG_OPTIONS =
 RELEASE_OPTIONS = -Ofast -D NODEBUG -fkeep-inline-functions -fkeep-static-functions -fmerge-all-constants -fmodulo-sched
 
 ##build targets
-EXE_DEBUG = BUILD_DEBUG
-EXE_RELEASE = BUILD_RELEASE
+EXE_DEBUG = BUILD_DEBUG.exe
+EXE_RELEASE = BUILD_RELEASE.exe
 
 
 ##debug compiling

@@ -16,7 +16,7 @@ OBJ =  $(patsubst $(SOURCE_DIR)/%.cpp,$(ODIR)/%.o,$(_OBJ)) $(patsubst $(SOURCE_D
 CFLAGS = -std=c++17 -I$(IDIR) -I$(IDIR_GPU) -Ofast -fopenmp -lOpenCL
 WFLAGS =  -Wall -Wextra -Wfloat-equal -Wundef -Wcast-align -Wwrite-strings -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow -Woverloaded-virtual -Wmissing-include-dirs -Wunknown-pragmas -Wduplicated-cond -Wfloat-equal -Wshadow -Wunsafe-loop-optimizations -Wpacked -Wsuggest-attribute=pure -Wsuggest-attribute=const -Wsuggest-attribute=noreturn -Wmissing-noreturn -Wsuggest-attribute=malloc -Wsuggest-attribute=format -Wmissing-format-attribute -Wsuggest-attribute=cold
 
-EXE=Generate
+EXE=Generate.exe
 
 
 

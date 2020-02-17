@@ -14,7 +14,7 @@ LIBPNG_Path = /usr/include/libpng16/
 CFLAGS = -std=c++17 -I$(IDIR) -I$(LIBPNG_Path) -lpng -Ofast -fopenmp
 WFLAGS =  -Wall -Wextra -Wfloat-equal -Wundef -Wcast-align -Wwrite-strings -Wlogical-op -Wmissing-declarations -Wredundant-decls -Wshadow -Woverloaded-virtual -Wmissing-include-dirs -Wunknown-pragmas -Wduplicated-cond -Wfloat-equal -Wshadow -Wunsafe-loop-optimizations -Wpacked -Wsuggest-attribute=pure -Wsuggest-attribute=const -Wsuggest-attribute=noreturn -Wmissing-noreturn -Wsuggest-attribute=malloc -Wsuggest-attribute=format -Wmissing-format-attribute -Wsuggest-attribute=cold
 
-EXE=Generate
+EXE=Generate.exe
 
 
 $(ODIR)/%.o: %.cpp $(DEPS)
