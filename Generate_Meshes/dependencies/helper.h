@@ -2,9 +2,13 @@
 #include <vector>
 #include "global.h"
 #include "vertex.h"
+#include <iostream>
 
 //shouldn't be inline -- need to fix
 inline std::vector<Vertex> to_vertex(std::vector<float> v, std::vector<float> u) {
+  if (v.size() / 3 != u.size() / 2) {
+    std::cerr << "vectex and uv vector sizes are of non compatible sizes -- to_vertex(..)" << std::endl;
+  }
   std::vector<Vertex> vertices;
   vertices.resize(v.size() / 3);
   unsigned j = 0, k = 0;

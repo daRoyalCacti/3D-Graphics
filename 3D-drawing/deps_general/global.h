@@ -3,10 +3,10 @@
 
 //#define NODEBUG //redundent -- now defined in makefile for debug builds
 
-//#define player_camera	//if the controls are similar to a video game -- undef for precalculated camera (files in 'camera' folder)
+#define player_camera	//if the controls are similar to a video game -- undef for precalculated camera (files in 'camera' folder)
 //#define vsync		//is currently broken
-#define frame_init_increase	//if framerate increments itself by default -- should be the default
-#define naive_recording
+//#define frame_init_increase	//if framerate increments itself by default -- should be the default
+//#define naive_recording
 
 //for debugging
 //#define log_frame_no			//logs the current frame number to standard output

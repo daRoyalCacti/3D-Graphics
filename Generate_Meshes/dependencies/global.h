@@ -2,6 +2,8 @@
 #include <vector>
 #include "vertex.h"
 
+typedef uint32_t Q; //data type that agress with the theoretical max size of mesh in vulkan app -- not well named
+
 namespace global {
   //vectors that contain data required for reading the data effectively
   std::vector<unsigned> ubo_data; //movement data
