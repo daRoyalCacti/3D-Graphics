@@ -209,7 +209,7 @@ namespace files {
       #endif
 
       for (int i = 0; i < static_cast<int>(no_m_mesh); i++) { //for all moving meshes
-        Squares[i].Mesh.indices = m_Indicies[i];
+        Squares[i].indices = m_Indicies[i];
         Squares[i].frames = frames_for_mesh[i];
         Squares[i].Meshes.resize(static_cast<int>(Squares[i].frames));
         for (int j = 0; j < static_cast<int>(Squares[i].frames); j++) { //for every frame of animation
@@ -457,7 +457,7 @@ namespace files {
       	std::cout << "\t Camera reading took \t\t\t" << std::chrono::duration <double, std::milli>(end - start).count() << "ms" << std::endl;
         mtx.unlock();
       #endif
-      
+
       return no_camera_frames;
     }
 

@@ -14,8 +14,6 @@
 
 
 
-
-
 #ifndef NODEBUG
 	#define timing		//logs timing of major events to standard output
 	#ifdef timing

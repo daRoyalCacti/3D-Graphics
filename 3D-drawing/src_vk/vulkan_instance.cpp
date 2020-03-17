@@ -325,7 +325,7 @@ void vulkanApp::cleanup() {
 
 #pragma omp parallel for
 	for (uint32_t i = 0; i < no_m_mesh; i++) {
-		movingMeshes[i].Mesh.cleanup(device);
+		movingMeshes[i].cleanup(device);
 	}
 
 
@@ -529,21 +529,19 @@ void vulkanApp::updateUniformBuffers(uint32_t currentImage) {
 		} else {
 			local_framecounter = global::framecounter;
 		}
-		movingMeshes[j].Mesh.ub.ubo.model = square_model[i].frame(local_framecounter);//square_model[i];
+		movingMeshes[j].ub.ubo.model = square_model[i].frame(local_framecounter);
 #ifdef player_camera
-		movingMeshes[j].Mesh.ub.ubo.view = global::camera.view();
+		movingMeshes[j].ub.ubo.view = global::camera.view();
 #else
 #ifdef precalculated_player_camera
-		movingMeshes[j].Mesh.ub.ubo.view = global::camera.view();	//updated above
+		movingMeshes[j].ub.ubo.view = global::camera.view();	//updated above
 
 #else
-
-		movingMeshes[j].Mesh.ub.ubo.view = glm::mat4(1.0f);
+		movingMeshes[j].ub.ubo.view = glm::mat4(1.0f);
 #endif
 #endif
-
-			movingMeshes[j].Mesh.ub.ubo.proj = glm::perspective(glm::radians(vk_settings::fov), swapChainExtent.width / (float)swapChainExtent.height, vk_settings::near_plane, vk_settings::far_plane);
-			movingMeshes[j].Mesh.ubo_update(currentImage, device);
+			movingMeshes[j].ub.ubo.proj = glm::perspective(glm::radians(vk_settings::fov), swapChainExtent.width / (float)swapChainExtent.height, vk_settings::near_plane, vk_settings::far_plane);
+			movingMeshes[j].ubo_update(currentImage, device);
 		}
 
 }
@@ -584,7 +582,7 @@ void vulkanApp::cleanupSwapChain() {
 
 #pragma omp parallel for
 	for (uint32_t i = 0; i < no_m_mesh; i++) {
-		movingMeshes[i].Mesh.cleanup_swapChain(device);
+		movingMeshes[i].cleanup_swapChain(device);
 	}
 
 
@@ -1368,7 +1366,7 @@ void vulkanApp::createTextureImage() {
 #pragma omp parallel for
 	for (uint32_t i = no_mesh; i < no_mesh + no_m_mesh; i++) {
 		uint32_t j = i - no_mesh;
-		movingMeshes[j].Mesh.createTexture(imagePixels[i], device, physicalDevice, commandPool, graphicsQueue);
+		movingMeshes[j].createTexture(imagePixels[i], device, physicalDevice, commandPool, graphicsQueue);
 	}
 	/*
 #pragma omp parallel for
@@ -1393,7 +1391,7 @@ void vulkanApp::test1() {
 void vulkanApp::test2() {
 	#pragma omp parallel for
 		for (uint32_t i = 0; i < no_m_mesh; i++) {
-			movingMeshes[i].Mesh.createTextureImageView(device);
+			movingMeshes[i].createTextureImageView(device);
 		}
 }
 
@@ -1492,7 +1490,7 @@ void vulkanApp::createIndexBuffer() {
 
 #pragma omp parallel for
 	for (uint32_t i = 0; i < no_m_mesh; i++) {
-		movingMeshes[i].Mesh.createIndexBuffer(device,commandPool, graphicsQueue, physicalDevice);
+		movingMeshes[i].createIndexBuffer(device,commandPool, graphicsQueue, physicalDevice);
 	}
 
 	#ifdef detailed_timing
@@ -1513,7 +1511,7 @@ void vulkanApp::createUniformBuffers() {
 
 #pragma omp parallel for
 	for (uint32_t i = 0; i < no_m_mesh; i++) {
-		movingMeshes[i].Mesh.createUb(static_cast<uint32_t>(swapChainImages.size()), device, physicalDevice);
+		movingMeshes[i].createUb(static_cast<uint32_t>(swapChainImages.size()), device, physicalDevice);
 	}
 
 	#ifdef detailed_timing
@@ -1565,7 +1563,7 @@ void vulkanApp::createDescriptorSets() {
 	}
 
 	for (uint32_t i = 0; i < no_m_mesh; i++) {
-		movingMeshes[i].Mesh.createDescriptorSet(descriptorSetLayout, &descriptorPool, device, textureSampler);
+		movingMeshes[i].createDescriptorSet(descriptorSetLayout, &descriptorPool, device, textureSampler);
 	}
 
 	#ifdef detailed_timing
@@ -1626,7 +1624,7 @@ void vulkanApp::createCommandBuffers() {
 		}
 
 		for (uint32_t j = 0; j < no_m_mesh; j++) {
-			movingMeshes[j].Mesh.draw(commandBuffers, pipelineLayout, i);
+			movingMeshes[j].draw(commandBuffers, pipelineLayout, i);
 		}
 
 		vkCmdEndRenderPass(commandBuffers[i]);

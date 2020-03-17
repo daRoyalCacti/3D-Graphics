@@ -3,12 +3,13 @@
 #include "vertex.h"
 #include <vector>
 #include <iostream>
+#include "global.h"
 
-struct moving_simple_mesh {
+struct moving_simple_mesh : public staticSimpleMesh
+{
   //this is a thin wrapper around the static mesh to make using animated meshes easier to code
   //a lot of the initial setup is the same - just calling .Mesh.function() -- the only difference is for the 2 functions defined below
   //interpolation between frames might be added at somepoint
-  staticSimpleMesh Mesh;
   bool modulous = false; //what to do if a frame of mesh being called is greater than the number of frames available
                         //true will make the animation repeat, false will make only the last frame show once completed
   unsigned frames = 1; //number of frames of animation - 1 frame makes it act as a static mesh
@@ -20,8 +21,8 @@ struct moving_simple_mesh {
 
 	inline void createVertexBuffer(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue, VkPhysicalDevice physicalDevice){
     //this function is a work around -- as seen in the line below
-    Mesh.vertices = Meshes[0]; //<- is a work around and needs to be updated
-  	Mesh.createVertexBuffer(device, commandPool, graphicsQueue, physicalDevice);
+    vertices = Meshes[0]; //<- is a work around and needs to be updated
+  	staticSimpleMesh::createVertexBuffer(device, commandPool, graphicsQueue, physicalDevice);
   }
 
 	inline void updateVertexBuffer(VkDevice device, unsigned frameCounter, VkCommandPool commandPool, VkQueue graphicsQueue){
@@ -37,7 +38,7 @@ struct moving_simple_mesh {
        return; //no need to update the mesh because its last frame has been drawn
      }
    }
-   Mesh.updateVertexBuffer(device, Meshes[frameCounter], commandPool, graphicsQueue);
+   staticSimpleMesh::updateVertexBuffer(device, Meshes[frameCounter], commandPool, graphicsQueue);
   }
 
 };
